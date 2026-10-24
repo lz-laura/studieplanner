@@ -1,0 +1,1485 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Studieplanner</title>
+<meta name="robots" content="noindex, nofollow">
+<script>
+// opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
+window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
+window.SP_CODE=new URLSearchParams(location.search).get('code')||'';
+// thema en rol meteen goed zetten uit de vorige keer (geen flits van verkeerde kleuren)
+try{ const c=JSON.parse(localStorage.getItem('sp-boot-'+SP_CODE)||'null');
+  if(c){ const r=document.documentElement; r.dataset.kind=c.kind; r.dataset.rol=c.rol; if(c.inhoud&&c.inhoud.profiel&&c.inhoud.profiel.thema) r.dataset.thema=c.inhoud.profiel.thema; } }catch(e){}
+// één verzoek naar de opslag: zonder cookies, dus los van Google-accounts en ouderlijk toezicht
+window.spApi=function(body){
+  return fetch(SP_API,{method:'POST',body:JSON.stringify(Object.assign({code:SP_CODE},body)),credentials:'omit',redirect:'follow'})
+    .then(r=>{ if(!r.ok) throw new Error('net'); return r.json(); })
+    .then(j=>{ if(j&&j.fout) throw new Error(j.fout); return j; });
+};
+</script>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=Gentium+Book+Plus:wght@400&display=swap">
+<style>
+/* Layout: één kolom als een agendabladzijde. Bovenaan vandaag + toevoegen, dan toetsen met toetsstof, dan alle dagen ingeklapt. */
+:root{
+  --paper:#f3f6f4; --card:#ffffff; --ink:#18231f; --muted:#56635e; --line:#d6dfda;
+  --kid:#1f7a6d; --kid-ink:#ffffff; --kid-soft:#dff0ec;
+  --toets:#b4560f; --toets-soft:#fbe9da; --ok:#2f7d3a; --ok-soft:#e1f1e3; --bad:#b3261e;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --fs:18px; --kid-txt:var(--kid);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#121816; --card:#1b2421; --ink:#e9efec; --muted:#9fb0a9; --line:#2c3833;
+  --kid:#5cc3b2; --kid-ink:#0f1513; --kid-soft:#1c3530;
+  --toets:#f0a35e; --toets-soft:#3a2a1c; --ok:#7fcf88; --ok-soft:#1d3322; --bad:#f2b8b5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#121816; --card:#1b2421; --ink:#e9efec; --muted:#9fb0a9; --line:#2c3833;
+  --kid:#5cc3b2; --kid-ink:#0f1513; --kid-soft:#1c3530;
+  --toets:#f0a35e; --toets-soft:#3a2a1c; --ok:#7fcf88; --ok-soft:#1d3322; --bad:#f2b8b5; color-scheme:dark}
+
+html,body{background:var(--paper)}
+body{color:var(--ink);font-family:var(--body);font-size:var(--fs);line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 56px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--kid);outline-offset:2px}
+.meta{color:var(--muted);font-size:.85em}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.top h1{font-size:1.6em;font-weight:800}
+.top h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.5em;color:var(--muted)}
+.tools{display:flex;gap:6px}
+.tools button{min-width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:700}
+
+.total{display:flex;flex-direction:column;gap:8px}
+.bar{height:12px;background:var(--line);border-radius:12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--kid);transition:width .3s}
+
+/* toevoegen */
+.addbtn{min-height:60px;border-radius:16px;border:2px dashed var(--kid);background:var(--card);font-weight:700;font-size:1.05em;color:var(--kid-txt)}
+.panel{background:var(--card);border:2px solid var(--kid);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--paper);font-weight:700}
+.seg button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field span{font-size:.85em;color:var(--muted)}
+input[type=text],input[type=date],input[type=number],select{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:52px;padding:0 12px;width:100%;box-sizing:border-box}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.maken{padding:10px 12px;border-radius:12px;background:var(--kid-soft)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row button{flex:1 1 140px;min-height:56px;border-radius:14px;border:1px solid var(--line);background:var(--paper);font-weight:700}
+.row button.prim{background:var(--kid);border-color:var(--kid);color:var(--kid-ink)}
+.linkbtn{background:none;border:0;padding:0;color:var(--kid-txt);text-decoration:underline;font-size:.85em;align-self:flex-start;min-height:32px}
+.msg{font-size:.9em;padding:10px 12px;border-radius:12px;background:var(--toets-soft)}
+
+/* vandaag */
+.today{background:var(--card);border:2px solid var(--kid);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.today .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.today h2{font-size:1.5em}
+.flag{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--toets-soft)}
+.flag::before{content:"";flex:none;width:12px;height:12px;border-radius:50%;background:var(--toets);margin-top:.45em}
+.flag b{display:block}
+
+/* taken */
+.list{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.task{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--paper);min-height:56px}
+.task label{display:contents;cursor:pointer}
+.task input{width:28px;height:28px;accent-color:var(--kid);margin:0;cursor:pointer}
+.task .txt{min-width:0}
+.task .vak{font-weight:700}
+.task .min{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85em;white-space:nowrap}
+.task.done .txt .w{text-decoration:line-through;color:var(--muted)}
+.task.done{background:var(--ok-soft)}
+.tag{display:inline-block;font-size:.75em;font-weight:700;color:var(--kid-txt);background:var(--kid-soft);border-radius:8px;padding:1px 8px;margin-top:4px}
+.del{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.del button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:.85em}
+.del button.ja{border-color:var(--bad);color:var(--bad);font-weight:700}
+.dl{display:inline-block;font-size:.8em;font-weight:700;color:var(--toets);margin-top:2px}
+.task.hulp{background:var(--toets-soft);outline:2px solid var(--toets)}
+.nbox{grid-column:2/-1;font-size:.9em;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere}
+.nbox b{color:var(--toets)}
+.nact{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap}
+.nact button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:.85em}
+.nact button.on{border-color:var(--toets);color:var(--toets);font-weight:700}
+.claudelink{display:inline-flex;align-items:center;justify-content:center;flex:1 1 140px;min-height:56px;padding:0 14px;border-radius:14px;background:var(--kid);color:var(--kid-ink);font-weight:700;text-decoration:none}
+.claudelink.sm{flex:none;min-height:40px;border-radius:10px;font-size:.85em}
+.claudelink:focus-visible{outline:3px solid var(--kid);outline-offset:2px}
+.nedit{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.nedit textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:84px;width:100%;box-sizing:border-box;resize:vertical}
+.nedit .chk{display:flex;gap:10px;align-items:center;font-size:.95em}
+.nedit .chk input{width:24px;height:24px;accent-color:var(--toets)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{min-height:44px;padding:0 14px;border-radius:22px;border:2px solid var(--line);background:var(--paper);font-weight:700;font-size:.9em}
+.chips button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
+.chk{display:flex;gap:10px;align-items:center;font-size:.95em;cursor:pointer}
+.chk input{width:24px;height:24px;accent-color:var(--kid)}
+.fc{min-height:180px;border-radius:18px;background:var(--kid-soft);display:grid;place-items:center;text-align:center;padding:20px;cursor:pointer;user-select:none}
+.fcv{font-family:"Gentium Book Plus","Palatino Linotype",Georgia,serif;font-size:2.4em;line-height:1.2;overflow-wrap:anywhere}
+.fcv.lang{font-family:var(--body);font-size:1.25em;font-weight:700}
+.fca{margin-top:12px;font-size:1.05em;color:var(--ink);white-space:pre-line}
+.fca .g{font-family:"Gentium Book Plus","Palatino Linotype",Georgia,serif;font-size:1.3em}
+.fca.hint{color:var(--muted);font-size:.85em}
+.fctip{margin-top:10px;padding:8px 12px;border-radius:10px;background:var(--card);border:1px dashed var(--kid);font-size:.95em}
+.mini{display:flex;gap:6px;flex-wrap:wrap}
+.mini button,.mini a{flex:1 1 90px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:.85em;text-decoration:none;cursor:pointer}
+.mini button[aria-pressed="true"]{border-color:var(--kid);color:var(--kid);font-weight:700}
+.mini .on{border-color:var(--toets);color:var(--toets);font-weight:700}
+.fcpanel{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:var(--paper);border:1px solid var(--line)}
+.fcpanel textarea,.fcpanel input[type=text],.sgedit input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;box-sizing:border-box}
+.fcpanel textarea{min-height:70px;resize:vertical}
+.radios{display:flex;gap:16px;flex-wrap:wrap}
+.radios label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.radios input{width:22px;height:22px;accent-color:var(--kid)}
+.sgedit{display:flex;flex-direction:column;gap:8px}
+.hulpbox h3{font-size:1em;font-family:var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.8em}
+.hulpbox li{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.hulpbox li > div{min-width:0}
+.hulpbox li button{flex:none;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--toets);background:var(--card);color:var(--toets);font-weight:700;font-size:.85em}
+.hulpbox{background:var(--card);border:2px solid var(--toets);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.hulpbox h2{font-size:1.2em}
+.hulpbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.hulpbox li{padding:10px 12px;border-radius:12px;background:var(--toets-soft)}
+.hulpbox li span{display:block;font-size:.9em;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* toetsen */
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec > h2{font-size:1.2em}
+details{background:var(--card);border:1px solid var(--line);border-radius:16px}
+details.istoday{border-color:var(--kid)}
+details.toets{border-left:6px solid var(--toets)}
+summary{list-style:none;cursor:pointer;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;min-height:56px}
+summary::-webkit-details-marker{display:none}
+summary .dn{font-family:var(--display);font-weight:600;font-size:1.05em}
+summary .pc{font-variant-numeric:tabular-nums;font-weight:700;color:var(--kid-txt)}
+summary .sub{grid-column:1/-1;color:var(--muted);font-size:.85em}
+summary .sub b{color:var(--toets)}
+details.alldone summary .pc{color:var(--ok)}
+.inner{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.phase{font-size:.8em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-top:6px}
+
+.checks{background:var(--card);border:1px dashed var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.checks h2{font-size:1.1em}
+.checks ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.note{font-size:.8em;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
+.tabs button{min-height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05em}
+.tabs button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
+.tabpane{display:flex;flex-direction:column;gap:20px}
+.tabpane[hidden]{display:none}
+.rooster h2{font-size:1.2em}
+.rgrid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 12px;font-variant-numeric:tabular-nums}
+.rgrid .h{color:var(--muted);font-size:.8em;text-transform:uppercase;letter-spacing:.06em}
+.rgrid .d{font-weight:700;white-space:nowrap}
+.sgrid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px}
+.sgrid .d{font-weight:700}
+.swcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.swhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.swcard h2{font-size:1.4em}
+.swcard h3{font-size:1.05em;margin-top:6px}
+.swcard p{margin:0}
+.swcard ul{margin:0;padding-left:1.2em}
+.tw{overflow-x:auto}
+.tw table{border-collapse:collapse;width:100%;font-size:.95em}
+.tw th{text-align:left;color:var(--muted);font-size:.8em;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--line)}
+.tw td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tw td:first-child{white-space:nowrap;font-weight:700;padding-right:14px}
+.rooster{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:root:not([data-rol="ouder"]) #fcbClaude,:root:not([data-rol="ouder"]) a[data-nclaude],:root:not([data-rol="ouder"]) a[data-hclaude]{display:none!important}
+.zoeklink{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--kid);background:var(--card);color:var(--kid-txt);font-weight:700;font-size:.85em;text-decoration:none}
+.zoeklink:focus-visible{outline:3px solid var(--kid);outline-offset:2px}
+.hulpbox .hact{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.hulpbox .hact .claudelink.sm{min-height:40px}
+.hulpbox li{flex-direction:column}
+.toast.lang{max-width:min(92vw,520px);text-align:center;line-height:1.4}
+
+/* thema pastel: blauw, turquoise, paars en roze */
+:root[data-thema="pastel"]{
+  --paper:#f6f5fc; --card:#ffffff; --ink:#1f2340; --muted:#5d6080; --line:#dcdcef;
+  --kid:#9cc3ec; --kid-ink:#1b2547; --kid-txt:#4a5fa3; --kid-soft:#dcf3f2;
+  --toets:#a0558c; --toets-soft:#f8e3f0; --ok:#3f7f6e; --ok-soft:#dff3ee;
+}
+@media (prefers-color-scheme: dark){:root[data-thema="pastel"]:not([data-theme="light"]){
+  --paper:#17162a; --card:#221f38; --ink:#ecebf7; --muted:#a8a6c6; --line:#34314f;
+  --kid:#a9c8f2; --kid-ink:#141a33; --kid-txt:#b7cff5; --kid-soft:#1f3a44;
+  --toets:#e6a9d4; --toets-soft:#3a2440; --ok:#8fd6c1; --ok-soft:#1c3a33}}
+:root[data-thema="pastel"][data-theme="dark"]{
+  --paper:#17162a; --card:#221f38; --ink:#ecebf7; --muted:#a8a6c6; --line:#34314f;
+  --kid:#a9c8f2; --kid-ink:#141a33; --kid-txt:#b7cff5; --kid-soft:#1f3a44;
+  --toets:#e6a9d4; --toets-soft:#3a2440; --ok:#8fd6c1; --ok-soft:#1c3a33}
+:root[data-thema="pastel"] .bar i{background:linear-gradient(90deg,#9cc3ec,#8fd9d3,#c3a6e6,#f0b3d3)}
+:root[data-thema="pastel"] .today{border-color:#c3a6e6}
+.addbtn.imp{border-style:solid;border-width:1px;border-color:var(--line);color:var(--ink)}
+.implist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.implist li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:12px;background:var(--paper)}
+.implist input{width:24px;height:24px;accent-color:var(--kid);margin:2px 0 0}
+.implist .oud{display:block;color:var(--muted);font-size:.85em;text-decoration:line-through}
+.impsum{display:flex;flex-direction:column;gap:4px}
+.impsum b{font-variant-numeric:tabular-nums}
+.uitleg{grid-column:2/-1;padding:10px 12px;border-radius:12px;background:var(--kid-soft);display:flex;flex-direction:column;gap:6px}
+.uitleg .ut{white-space:pre-wrap;overflow-wrap:anywhere}
+.uitleg .ut + .ut{border-top:1px dashed var(--line);padding-top:6px}
+.tag.nieuw{color:var(--kid-ink);background:var(--kid);margin:0 0 2px;align-self:flex-start}
+.hulpbox .meta{display:block}
+:root:not([data-rol="ouder"]) [data-ustuur]{display:none!important}
+.tag.pta{color:var(--toets);background:var(--toets-soft)}
+.tag.mag{color:var(--muted);background:var(--paper);border:1px solid var(--line)}
+.tag.wijz{color:var(--toets);background:var(--toets-soft)}
+
+/* wisselen tussen kinderen (ouder) */
+.wissel{display:flex;gap:8px;flex-wrap:wrap}
+.wissel a{min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:22px;border:2px solid var(--line);background:var(--card);color:var(--ink);font-weight:700;text-decoration:none}
+.wissel a[aria-current="page"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1 id="kop">Studieplanner</h1>
+    <div class="tools">
+      <button id="fsMin" aria-label="Tekst kleiner">A−</button>
+      <button id="fsPlus" aria-label="Tekst groter">A+</button>
+      <button id="theme" aria-label="Licht of donker">◐</button>
+    </div>
+  </header>
+
+  <nav class="wissel" id="wissel" aria-label="Kind kiezen" hidden></nav>
+
+  <section class="hulpbox" id="hulp" hidden></section>
+
+  <nav class="tabs" id="tabsNav" aria-label="Onderdelen" hidden>
+    <button id="tbPlanner" aria-pressed="true">Planner</button>
+    <button id="tbSw" aria-pressed="false">Studiewijzers</button>
+  </nav>
+
+  <div class="tabpane" id="tabPlanner">
+  <section class="total" aria-label="Voortgang">
+    <div class="meta" id="totalTxt"></div>
+    <div class="bar"><i id="totalBar"></i></div>
+  </section>
+
+  <button class="addbtn" id="openAdd">+ Huiswerk of toetsstof toevoegen</button>
+  <button class="addbtn imp" id="openImp">📄 Afsprakenlijst uit Magister inlezen</button>
+  <input type="file" id="impFile" accept="application/pdf,.pdf" hidden>
+  <section class="panel" id="impPanel" hidden aria-live="polite"></section>
+
+  <section class="panel" id="panel" hidden>
+    <div class="seg" role="group" aria-label="Wat voeg je toe?">
+      <button id="segHw" aria-pressed="true">Huiswerk</button>
+      <button id="segTs" aria-pressed="false">Toetsstof</button>
+    </div>
+
+    <div id="fHw" class="grid2" style="display:grid">
+      <label class="field" for="hwVak"><span>Vak</span><select id="hwVak"></select></label>
+      <label class="field" for="hwAf"><span>Moet af op (die dag neem je het mee)</span><input type="date" id="hwAf"></label>
+      <label class="field" for="hwWat" style="grid-column:1/-1"><span>Wat moet je doen?</span><input type="text" id="hwWat" placeholder="bijv. §4.5 opdracht 49–53"></label>
+      <div class="maken" id="hwMaken" style="grid-column:1/-1"></div>
+      <button class="linkbtn" id="hwAnders" type="button">Andere dag om te maken kiezen</button>
+      <label class="field" for="hwDag" id="hwDagWrap" hidden><span>Maken op</span><input type="date" id="hwDag"></label>
+      <label class="field" for="hwMin"><span>Hoe lang ongeveer? (minuten)</span><input type="number" id="hwMin" min="5" max="240" step="5" value="30"></label>
+    </div>
+
+    <div id="fTs" class="grid2" hidden>
+      <label class="field" for="tsToets"><span>Bij welke toets?</span><select id="tsToets"></select></label>
+      <label class="field" for="tsWat" style="grid-column:1/-1"><span>Wat moet je leren?</span><input type="text" id="tsWat" placeholder="bijv. ook de aantekeningen uit de les"></label>
+    </div>
+
+    <div class="msg" id="addMsg" hidden></div>
+    <div class="row">
+      <button class="prim" id="save">Opslaan</button>
+      <button id="cancel">Annuleren</button>
+    </div>
+  </section>
+
+  <section class="today" id="today"></section>
+
+  <section class="rooster" id="rooster" hidden></section>
+
+  <section class="sec">
+    <h2>Toetsen en toetsstof</h2>
+    <div class="sec" id="toetsen"></div>
+  </section>
+
+  <section class="sec" id="oefenen" hidden>
+    <h2>Oefenen</h2>
+    <details data-id="oef-gr" id="oefGr">
+      <summary><span class="dn">Grieks · alfabet en woorden</span><span class="pc">TB p.20–22 · OB p.200</span>
+      <span class="sub">Flitskaarten: letters, tweeklanken, spiritus, accenten, woorden les 2 en 3 (met uitspraak)</span></summary>
+      <div class="inner">
+        <div class="chips" role="group" aria-label="Wat wil je oefenen?" id="fcChips">
+          <button data-set="letters" aria-pressed="true">Letters</button>
+          <button data-set="klanken" aria-pressed="false">Klinkers en tweeklanken</button>
+          <button data-set="tekens" aria-pressed="false">Spiritus, accenten, leestekens</button>
+          <button data-set="les2" aria-pressed="false">Woorden les 2 (tellen)</button>
+          <button data-set="les3" aria-pressed="false">Woorden les 3</button>
+          <button data-set="alles" aria-pressed="false">Alles</button>
+          <button data-set="lastig" aria-pressed="false" id="fcLastigBtn">Mijn lastige kaarten</button>
+        </div>
+        <div class="chips" role="group" aria-label="Welk groepje letters?" id="fcGroepen">
+          <button data-groep="0" aria-pressed="true">Alle letters</button>
+          <button data-groep="1" aria-pressed="false">1 · Α Β Γ Δ</button>
+          <button data-groep="2" aria-pressed="false">2 · Ε Ζ Η Θ</button>
+          <button data-groep="3" aria-pressed="false">3 · Ι Κ Λ</button>
+          <button data-groep="4" aria-pressed="false">4 · Μ Ν Ξ Ο</button>
+          <button data-groep="5" aria-pressed="false">5 · Π Ρ Σ Τ</button>
+          <button data-groep="6" aria-pressed="false">6 · Υ Φ Χ</button>
+          <button data-groep="7" aria-pressed="false">7 · Ψ Ω</button>
+        </div>
+        <label class="chk" for="fcOm"><input type="checkbox" id="fcOm"> Andersom (antwoord → Grieks)</label>
+        <div class="meta" id="fcInfo"></div>
+        <div class="fc" id="fcCard" role="button" tabindex="0" aria-label="Kaart omdraaien"><div><div class="fcv" id="fcVoor"></div><div class="fctip" id="fcTip" hidden></div><div class="fca" id="fcAchter"></div></div></div>
+        <div class="mini" id="fcMini">
+          <button id="fcbTip">Tip</button>
+          <button id="fcbUitleg">Uitleg</button>
+          <button id="fcbHulp">Hulp</button>
+          <a id="fcbClaude" href="https://claude.ai/new" target="_blank" rel="noopener">Vraag Claude</a>
+          <button id="fcbEdit">Aanpassen</button>
+        </div>
+        <div class="fcpanel" id="fcPanel" hidden></div>
+        <div class="row"><button id="fcNee">Nog niet</button><button class="prim" id="fcJa">Ik wist het</button></div>
+        <button class="linkbtn" id="fcNieuw">+ Eigen kaart toevoegen</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="sec">
+    <h2>Alle dagen</h2>
+    <div class="sec" id="days"></div>
+  </section>
+
+  <section class="checks" id="checks" hidden></section>
+
+  </div>
+
+  <div class="tabpane" id="tabSw" hidden>
+    <section class="rooster">
+      <h2>Schooljaar in het kort</h2>
+      <div class="sgrid" id="swSchool"></div>
+    </section>
+    <div class="chips" role="group" aria-label="Kies een vak" id="swChips"></div>
+    <section class="swcard" id="swVak"></section>
+  </div>
+
+  <div class="note" id="opslag"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ---------- koppeling met de opslag (Google Sheet via Apps Script) ----------
+// Bootst de opslag van de oude Claude-versie na, zodat de planner zelf niet hoeft te veranderen.
+(function(){
+  const code = window.SP_CODE || '';
+  const pre = 'sp-' + code + '-';
+  let cache = {}, wachtrij = [], rev = 0;
+  const luisteraars = {}; let bezig = false;
+
+  const lees = k => { try { const v = localStorage.getItem(pre + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
+  const bewaar = () => { try {
+    localStorage.setItem(pre + 'cache', JSON.stringify(cache));
+    localStorage.setItem(pre + 'wachtrij', JSON.stringify(wachtrij));
+    localStorage.setItem(pre + 'rev', JSON.stringify(rev));
+  } catch (e) {} };
+
+  // statusbalkje rechtsonder
+  const badge = document.createElement('div');
+  badge.setAttribute('role', 'status');
+  badge.style.cssText = 'position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;padding:6px 12px;border-radius:999px;font:600 14px system-ui,sans-serif;background:var(--card,#fff);color:var(--muted,#555);border:1px solid var(--line,#ccc)';
+  const status = (txt, fout) => { badge.textContent = txt; badge.style.color = fout ? 'var(--toets,#b4560f)' : 'var(--muted,#555)'; };
+  if (document.body) document.body.appendChild(badge); else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(badge));
+  status('Verbinden…');
+
+  const snap = c => { const m = cache[c] || {};
+    return { docs: Object.keys(m).filter(id => !m[id].del).map(id => ({ id, data: () => m[id].d })) }; };
+  const meld = c => (luisteraars[c] || []).forEach(f => { try { f(snap(c)); } catch (e) {} });
+
+  function lokaal(op){
+    const m = cache[op.c] = cache[op.c] || {};
+    if (op.a === 'del') m[op.id] = { d: (m[op.id] || {}).d || null, t: op.t, del: true };
+    else if (op.a === 'update') m[op.id] = { d: Object.assign({}, (m[op.id] && !m[op.id].del) ? m[op.id].d : {}, op.d), t: op.t, del: false };
+    else m[op.id] = { d: op.d, t: op.t, del: false };
+  }
+  function schrijf(op){
+    op.t = Date.now(); lokaal(op); wachtrij.push(op); bewaar(); meld(op.c); verstuur();
+    return Promise.resolve();
+  }
+
+  function verstuur(){
+    if (bezig || !code) return;
+    bezig = true;
+    const ops = wachtrij.slice();
+    if (ops.length) status('Opslaan…');
+    window.spApi({ ops: ops, sinds: rev }).then(res => {
+      wachtrij = wachtrij.slice(ops.length);
+      const open = new Set(wachtrij.map(o => o.c + '|' + o.id));   // nog niet verstuurd = lokaal nieuwer
+      const geraakt = new Set();
+      (res.rijen || []).forEach(x => {
+        if (open.has(x.c + '|' + x.id)) return;
+        (cache[x.c] = cache[x.c] || {})[x.id] = { d: x.d, t: x.t, del: x.del };
+        geraakt.add(x.c);
+      });
+      rev = Math.max(rev, res.rev || 0); bewaar();
+      geraakt.forEach(meld);
+      bezig = false;
+      status('Opgeslagen ✓');
+      if (wachtrij.length) verstuur();
+    }).catch(err => {
+      bezig = false;
+      if (String(err && err.message || err).indexOf('Geen toegang') >= 0) status('Geen toegang', true);
+      else status(wachtrij.length ? 'Offline – wordt later bewaard' : 'Offline', true);
+    });
+  }
+
+  const db = { collection(c){ return {
+    doc(id){ return {
+      set: d => schrijf({ a: 'set', c, id, d }),
+      update: d => schrijf({ a: 'update', c, id, d }),
+      delete: () => schrijf({ a: 'del', c, id })
+    }; },
+    add: d => schrijf({ a: 'set', c, id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), d }),
+    onSnapshot(cb){ (luisteraars[c] = luisteraars[c] || []).push(cb); cb(snap(c)); return () => {}; }
+  }; } };
+
+  cache = lees('cache') || {}; wachtrij = lees('wachtrij') || []; rev = lees('rev') || 0;
+  window.spStartSync = function(){
+    verstuur();
+    setInterval(verstuur, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) verstuur(); });
+    window.addEventListener('online', verstuur);
+  };
+
+  window.claude = { use: async what => { if (what !== 'db') throw new Error('niet beschikbaar'); return db; } };
+})();
+</script>
+<script type="text/plain" id="app">
+// ---------- vaste planning: [vak, wat, minuten] ----------
+const DAGEN = SP.inhoud.dagen||[];
+
+// ---------- toetsstof (uit Magister en de studiewijzers) ----------
+const TOETSEN = SP.inhoud.toetsen||[];
+// ---------- profiel per kind ----------
+// niveau gaat mee in de zoekterm en de vraag aan Claude; de naam gaat nooit naar buiten
+const KIND = SP.inhoud.profiel || {naam:'', niveau:'', kop:'', vakken:['Anders']};
+// vakken uit de afsprakenlijst komen er vanzelf bij
+const vakkenLijst = () => [...new Set(KIND.vakken.filter(v=>v!=='Anders').concat(S.extra.map(x=>x.vak).filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'nl')).concat('Anders');
+
+
+// ---------- meldingen na een hulpvraag (uit huiswerkmaatje-meldingen) ----------
+const MELDINGEN = SP.meldingen||{gewoon:['Hulpvraag is doorgegeven.'],knipoog:[]};
+// meestal gewoon, ± 1 op 5 een knipoog, nooit twee keer dezelfde achter elkaar
+function kiesMelding(){
+  let vorige=''; try{ vorige=localStorage.getItem('sp-laatste-melding')||''; }catch(e){}
+  const lijst=Math.random()<0.2?MELDINGEN.knipoog:MELDINGEN.gewoon;
+  const keuze=lijst.filter(m=>m!==vorige);
+  const m=keuze[Math.floor(Math.random()*keuze.length)];
+  try{ localStorage.setItem('sp-laatste-melding',m); }catch(e){}
+  return m;
+}
+const isKind=()=>document.documentElement.dataset.rol!=='ouder';
+function hulpVerstuurd(){ if(isKind()) toast('Hulpvraag verstuurd. '+kiesMelding(),7000); else toast('Hulpvraag opgeslagen'); }
+
+// vak + taak van een sleutel (huiswerk, toetsstof of flitskaart)
+function taakVan(key){
+  for(const d of alleDagen()){ const t=takenVan(d.d).find(x=>x.key===key); if(t) return {vak:t.vak,wat:t.wat}; }
+  for(const T of alleToetsen()){ const t=stofVan(T).find(x=>x.key===key); if(t) return {vak:T.vak,wat:t.wat}; }
+  const n=S.notes[key];
+  if(/^fc-/.test(key)) return {vak:'Grieks',wat:n&&n.label?n.label.replace(/^Grieks kaart: /,''):''};
+  return {vak:'',wat:n&&n.label||''};
+}
+// Google: vak + (hulpvraag of taak) + uitleg + niveau
+function zoekUrl(key){
+  const t=taakVan(key), n=S.notes[key];
+  const kern=n&&n.hulp&&n.tekst?n.tekst:t.wat;
+  const q=[t.vak,kern,'uitleg',KIND.niveau].filter(Boolean).join(' ').replace(/\s+/g,' ').slice(0,200);
+  return 'https://www.google.com/search?q='+encodeURIComponent(q);
+}
+function zoekHtml(key){ return `<a class="zoeklink" href="${esc(zoekUrl(key))}" target="_blank" rel="noopener">🔎 Zoek uitleg<\/a>`; }
+const claudeUrl=tx=>'https://claude.ai/new?q='+encodeURIComponent(tx);
+
+// toetsen: vaste (uit de server) + ingelezen uit de afsprakenlijst
+function alleToetsen(){
+  const ing=S.extra.filter(x=>x.soort==='toets'&&!x.verborgen&&x.d).map(x=>({id:x.id,vak:x.vak,wat:x.wat||'Toets',d:x.d,tijd:x.tijd||'les',
+    stof:Array.isArray(x.stof)?x.stof:[],pta:!!x.pta,bron:x.bron||'',gewijzigd:x.gewijzigd||0}));
+  return TOETSEN.concat(ing).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+}
+function toetsOp(d){
+  const v=DAGEN.find(x=>x.d===d); if(v&&v.toets) return v.toets;
+  return alleToetsen().filter(T=>T.d===d&&T.bron).map(T=>T.vak+' · '+T.wat+(T.tijd!=='les'?' '+T.tijd:'')).join(' · ');
+}
+
+// ---------- opslag: online gedeeld (db) of, als dat niet kan, alleen dit apparaat ----------
+const S = {done:{}, extra:[], notes:{}, kEdits:{}, kEigen:[], kStats:{}, links:{}, mode:'local', db:null, readOnly:false};
+const LOCAL=Object.fromEntries(Object.entries({done:'done',extra:'extra',notes:'notes',kEdits:'kedits',kEigen:'keigen',kStats:'kstats',links:'links'}).map(([f,k])=>[f,'tw-'+SP.kind+'-'+k]));
+function loadLocal(){ for(const [f,k] of Object.entries(LOCAL)){ try{ const v=localStorage.getItem(k); if(v) S[f]=JSON.parse(v); }catch(e){} } }
+function saveLocal(){ try{ for(const [f,k] of Object.entries(LOCAL)) localStorage.setItem(k,JSON.stringify(S[f])); }catch(e){} }
+function opnieuwTonen(){ render(); if(typeof fcVerversen==='function') fcVerversen(); }
+
+// algemene opslag: map-collecties (één document per sleutel) en lijst-collecties
+const MAPS={kaartedits:'kEdits',kaartstats:'kStats',links:'links'};
+const LISTS={kaarten:'kEigen'};
+async function mapSet(coll,id,data){
+  if(S.readOnly) return;
+  const f=MAPS[coll];
+  if(data) S[f][id]=data; else delete S[f][id];
+  opnieuwTonen();
+  if(S.mode==='db'){ try{ const r=S.db.collection(coll).doc(id); data? await r.set(data) : await r.delete(); }catch(e){ writeFail(e); } }
+  else saveLocal();
+}
+async function listAdd(coll,data){
+  if(S.readOnly) return false;
+  if(S.mode==='db'){ try{ await S.db.collection(coll).add(data); return true; }catch(e){ writeFail(e); return false; } }
+  S[LISTS[coll]].push({...data,id:'l'+Date.now().toString(36)}); saveLocal(); opnieuwTonen(); return true;
+}
+async function listUpdate(coll,id,data){
+  if(S.readOnly) return;
+  const f=LISTS[coll], i=S[f].findIndex(x=>x.id===id);
+  if(i>=0) S[f][i]={...S[f][i],...data};
+  opnieuwTonen();
+  if(S.mode==='db'){ try{ await S.db.collection(coll).doc(id).update(data); }catch(e){ writeFail(e); } }
+  else saveLocal();
+}
+async function listDel(coll,id){
+  if(S.readOnly) return;
+  const f=LISTS[coll]; S[f]=S[f].filter(x=>x.id!==id); opnieuwTonen();
+  if(S.mode==='db'){ try{ await S.db.collection(coll).doc(id).delete(); }catch(e){ writeFail(e); } }
+  else saveLocal();
+}
+
+// notitie + hulpvraag per taak of kaart: {tekst, hulp, voor: 'mama'|'docent', label, t}
+async function setNote(key,tekst,hulp,label,voor){
+  if(S.readOnly) return;
+  tekst=(tekst||'').trim();
+  const leeg=!tekst&&!hulp;
+  const oud=S.notes[key]||{}, behoud={};
+  ['uitleg','gezien','nogNiet'].forEach(f=>{ if(oud[f]!=null) behoud[f]=oud[f]; });
+  if(leeg) delete S.notes[key]; else { const ti=taakVan(key); S.notes[key]={...behoud,tekst,hulp:!!hulp,voor:voor||'mama',label:label||'',vak:ti.vak,taak:ti.wat,t:Date.now()}; }
+  render();
+  if(S.mode==='db'){
+    try{ const ref=S.db.collection('notities').doc(key); leeg ? await ref.delete() : await ref.set(S.notes[key]); }
+    catch(e){ writeFail(e); }
+  } else saveLocal();
+}
+
+// losse velden van een notitie bijwerken (samenvoegen, niets overschrijven)
+async function zetNoteVelden(key,velden){
+  if(S.readOnly) return;
+  const n=S.notes[key]; if(!n) return;
+  Object.assign(n,velden); render();
+  if(S.mode==='db'){ try{ await S.db.collection('notities').doc(key).update(velden); }catch(e){ writeFail(e); } }
+  else saveLocal();
+}
+// ---------- uitleg van ouder naar kind ----------
+const uitlegVan=n=>Array.isArray(n&&n.uitleg)?n.uitleg:[];
+const laatsteUitleg=n=>{ const u=uitlegVan(n); return u.length?(+u[u.length-1].t||0):0; };
+const nieuweUitleg=n=>laatsteUitleg(n)>(+(n&&n.gezien)||0);
+const snaptNiet=n=>laatsteUitleg(n)>0&&(+(n&&n.nogNiet)||0)>laatsteUitleg(n);
+// opmaak uit Claude-antwoorden halen (sterretjes, kopjes, code)
+function schoonTekst(t){
+  return String(t||'').replace(/\r/g,'').replace(/^#{1,6}\s*/gm,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/__(.+?)__/g,'$1')
+    .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?!\w)/g,'$1$2').replace(/`{1,3}/g,'').replace(/^\s*[-*•]\s+/gm,'• ')
+    .replace(/^\s*---+\s*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
+}
+let uitlegKey=null, uitlegDraft=null;
+function uitlegHtml(k,n){
+  const u=uitlegVan(n); if(!u.length) return '';
+  const tot=u.map(a=>a.tekst).join(' ').length, lang=tot>500&&!meer.has('u-'+k);
+  let h=`<div class="uitleg">${isKind()&&nieuweUitleg(n)?'<span class="tag nieuw">Nieuwe uitleg<\/span>':''}<b>💬 Uitleg van mama<\/b>`;
+  h+=lang?`<div class="ut">${esc(u[u.length-1].tekst.slice(0,420).replace(/\s+\S*$/,''))}…<\/div>`:u.map(a=>`<div class="ut">${esc(a.tekst)}<\/div>`).join('');
+  if(tot>500) h+=`<button class="linkbtn" data-meer="u-${esc(k)}">${lang?'Lees verder':'Minder tekst'}<\/button>`;
+  if(isKind()&&n.hulp&&!S.readOnly) h+=`<div class="hact"><button class="prim" data-usnap="${esc(k)}">Snap ik nu ✓<\/button><button data-unog="${esc(k)}">Nog steeds niet<\/button><\/div>`;
+  return h+'<\/div>';
+}
+function uitlegForm(k){
+  return `<div class="nedit"><label class="field" for="uitlegTxt"><span>Uitleg voor ${esc(KIND.naam)}. Plakken uit Claude mag, de opmaak gaat eraf.<\/span><textarea id="uitlegTxt">${esc(uitlegDraft||'')}<\/textarea><\/label>
+    <div class="row"><button class="prim" data-uverstuur="${esc(k)}">Verstuur<\/button><button data-ucancel="1">Annuleren<\/button><\/div><\/div>`;
+}
+
+function writeFail(e){
+  if(e && e.code==='invalid_argument'){ S.readOnly=true; toast('Opslaan lukt niet. Je hebt bewerkrechten nodig.'); }
+  else toast('Opslaan lukte niet. Probeer het zo nog eens.');
+  render();
+}
+async function setDone(key,on){
+  if(S.readOnly) return;
+  if(on) S.done[key]=true; else delete S.done[key];
+  render();
+  if(S.mode==='db'){
+    try{ const ref=S.db.collection('vinkjes').doc(key); on ? await ref.set({af:true,t:Date.now()}) : await ref.delete(); }
+    catch(e){ writeFail(e); }
+  } else saveLocal();
+}
+async function addExtra(item){
+  if(S.mode==='db'){
+    try{ await S.db.collection('extra').add(item); return true; }
+    catch(e){ writeFail(e); return false; }
+  }
+  S.extra.push({...item,id:'l'+Date.now().toString(36)}); saveLocal(); render(); return true;
+}
+async function delExtra(id){
+  const it=S.extra.find(x=>x.id===id);
+  if(it&&it.bron==='magister'){
+    it.verborgen=true; render();
+    if(S.mode==='db'){ try{ await S.db.collection('extra').doc(id).update({verborgen:true}); }catch(e){ writeFail(e); } } else saveLocal();
+    return;
+  }
+  const key=(S.extra.find(x=>x.id===id)||{}).soort==='toetsstof'?'tx-'+id:'x-'+id;
+  if(S.mode==='db'){
+    try{ await S.db.collection('extra').doc(id).delete(); await S.db.collection('vinkjes').doc(key).delete(); }
+    catch(e){ writeFail(e); }
+  } else { S.extra=S.extra.filter(x=>x.id!==id); delete S.done[key]; saveLocal(); render(); }
+}
+
+// ---------- hulpjes ----------
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dt=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const lang=d=>dt(d).toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+const kort=d=>dt(d).toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'});
+const dagVoor=s=>{const x=dt(s);x.setDate(x.getDate()-1);return iso(x)};
+const uren=m=>m>=60?(Math.floor(m/60)+' u'+(m%60?' '+m%60+' min':'')):m+' min';
+const vandaag=()=>{const n=new Date();n.setHours(0,0,0,0);return iso(n)};
+let pendingDel=null, editKey=null, draft=null;
+
+// alle taken van een dag: vaste + zelf toegevoegd
+function takenVan(d){
+  const vast=(DAGEN.find(x=>x.d===d)||{taken:[]}).taken.map((t,i)=>({key:d+':'+i,d,vak:t[0],wat:t[1],min:t[2],af:t[3]}));
+  const eigen=S.extra.filter(x=>x.soort==='huiswerk'&&x.dag===d&&!x.verborgen).sort((a,b)=>(a.af||'').localeCompare(b.af||'')||(a.t||0)-(b.t||0))
+    .map(x=>({key:'x-'+x.id,d,vak:x.vak,wat:x.wat,min:x.min==null?30:x.min,af:x.af,eigen:x}));
+  return vast.concat(eigen);
+}
+// waarvoor is het: een inleverdag, of anders de eerstvolgende toets van dat vak
+function deadline(t){
+  if(t.af) return 'Af op '+kort(t.af)+' (meenemen naar school)';
+  const T=alleToetsen().find(T=>T.vak===t.vak&&T.d>=t.d);
+  return T?'Voor de toets op '+kort(T.d):'';
+}
+let sgEdit=null, sgDraft=null;
+function sgHtml(T){
+  const l=S.links[T.id], url=l&&l.url;
+  if(sgEdit===T.id){
+    return `<div class="sgedit"><label class="field" for="sgInput"><span>Link naar je StudyGo-lijst (kopieer hem uit StudyGo)<\/span><input type="text" id="sgInput" inputmode="url" value="${esc(sgDraft!=null?sgDraft:(url||''))}" placeholder="https://studygo.com/..."><\/label>
+      <div class="row"><button class="prim" data-sgsave="${esc(T.id)}">Opslaan<\/button>${url?`<button data-sgdel="${esc(T.id)}">Link weghalen<\/button>`:''}<button data-sgcancel="1">Annuleren<\/button><\/div><\/div>`;
+  }
+  if(url) return `<div class="row"><a class="claudelink" href="${esc(url)}" target="_blank" rel="noopener">StudyGo-lijst openen<\/a>${S.readOnly?'':`<button data-sgedit="${esc(T.id)}">Link wijzigen<\/button>`}<\/div>`;
+  if(T.id==='gr') return S.readOnly?'':`<div class="row"><a class="claudelink" href="#oefenen" data-goto="oefGr">Oefen met de flitskaarten<\/a><button data-sgedit="${esc(T.id)}">StudyGo-link toevoegen<\/button><\/div>`;
+  return S.readOnly?'':`<button class="linkbtn" data-sgedit="${esc(T.id)}">StudyGo-link toevoegen<\/button>`;
+}
+let claudeKey=null;
+function vraagVoorClaude(key){
+  let regels=['Mijn kind ('+KIND.niveau+') loopt vast bij het huiswerk en ik wil helpen.'];
+  let gevonden=false;
+  for(const d of alleDagen()){
+    const t=takenVan(d.d).find(x=>x.key===key);
+    if(t){ regels.push('Vak: '+t.vak+'.','Opdracht: '+t.wat+'.'); const dl=deadline(t); if(dl) regels.push(dl+'.'); gevonden=true; break; }
+  }
+  if(!gevonden) for(const T of alleToetsen()){
+    const t=stofVan(T).find(x=>x.key===key);
+    if(t){ regels.push('Vak: '+T.vak+'.','Leert voor: '+T.wat+' op '+kort(T.d)+'.','Dit stuk toetsstof: '+t.wat+'.'); break; }
+  }
+  if(!gevonden&&/^fc-/.test(key)){ const t=taakVan(key); regels.push('Vak: Grieks.','Flitskaart: '+t.wat+'.'); }
+  const n=S.notes[key];
+  if(n&&n.tekst) regels.push((n.hulp?'Wat hij/zij niet snapt: "':'Notitie: "')+n.tekst+'".');
+  regels.push('Leg het kort en stap voor stap uit op dit niveau, met één voorbeeld, zodat ik het kan uitleggen. Geef niet meteen de antwoorden van de opdracht.');
+  return regels.join(' ');
+}
+function claudeHtml(t){
+  if(claudeKey!==t.key) return '';
+  return `<div class="nedit"><span class="meta">Claude opent met deze vraag al ingevuld. Staat hij er niet? Hij is ook gekopieerd: plak hem in het nieuwe gesprek.<\/span>
+    <textarea readonly id="claudeTxt">${esc(vraagVoorClaude(t.key))}<\/textarea>
+    <div class="row"><a class="claudelink" href="${esc(claudeUrl(vraagVoorClaude(t.key)))}" target="_blank" rel="noopener">Claude openen<\/a><button data-ccopy="${esc(t.key)}">Opnieuw kopiëren<\/button><button data-cclose="1">Sluiten<\/button><\/div><\/div>`;
+}
+function labelVan(key){
+  for(const d of alleDagen()){ const t=takenVan(d.d).find(x=>x.key===key); if(t) return t.vak+' · '+t.wat+' (gepland '+kort(d.d)+')'; }
+  for(const T of alleToetsen()){ const t=stofVan(T).find(x=>x.key===key); if(t) return 'Toetsstof '+T.vak+' · '+t.wat; }
+  return '';
+}
+function noteHtml(t){
+  const n=S.notes[t.key];
+  if(editKey===t.key){
+    return `<div class="nedit"><label class="field" for="noteTxt"><span>Notitie (bijv. "tot opdracht 7 gedaan" of "mag in de les volgens Magister")<\/span><textarea id="noteTxt">${esc(draft!=null?draft:(n?n.tekst:''))}<\/textarea><\/label>
+      <label class="chk" for="noteHulp"><input type="checkbox" id="noteHulp" ${(n&&n.hulp)?'checked':''}> Ik heb hier hulp bij nodig<\/label>
+      <div class="radios"><label for="nvMama"><input type="radio" name="noteVoor" id="nvMama" value="mama" ${!n||n.voor!=='docent'?'checked':''}> Aan mama<\/label><label for="nvDoc"><input type="radio" name="noteVoor" id="nvDoc" value="docent" ${n&&n.voor==='docent'?'checked':''}> Aan de docent<\/label><\/div>
+      <div class="row"><button class="prim" data-nsave="${esc(t.key)}">Notitie opslaan<\/button><button data-ncancel="1">Annuleren<\/button><\/div><\/div>`;
+  }
+  let h='';
+  if(n&&(n.tekst||n.hulp)) h+=`<div class="nbox">${n.hulp?'<b>Hulp nodig'+(n.voor==='docent'?' (docent)':' (mama)')+'.<\/b> ':''}${esc(n.tekst)}<\/div>`;
+  if(n) h+=uitlegHtml(t.key,n);
+  if(S.readOnly) h+=`<div class="nact">${zoekHtml(t.key)}<\/div>`;
+  if(!S.readOnly){
+    h+=`<div class="nact">${zoekHtml(t.key)}<button data-nedit="${esc(t.key)}">${n?'Notitie wijzigen':'Notitie'}<\/button>${n?`<button data-nclear="${esc(t.key)}">Notitie weghalen<\/button>`:''}${(!n||!n.hulp)?`<button data-nhulp="${esc(t.key)}">Hulp nodig<\/button>`:`<button class="on" data-nhulpoff="${esc(t.key)}">Hulp is gelukt<\/button>`}<a class="claudelink sm" href="https://claude.ai/new" target="_blank" rel="noopener" data-nclaude="${esc(t.key)}">Vraag Claude<\/a><\/div>`;
+  }
+  return h+claudeHtml(t);
+}
+function alleDagen(){
+  const set=new Set(DAGEN.map(x=>x.d));
+  S.extra.forEach(x=>{ if(x.soort==='huiswerk'&&x.dag&&!x.verborgen) set.add(x.dag); });
+  const first=DAGEN.length?DAGEN[0].d:'0000',last=DAGEN.length?DAGEN[DAGEN.length-1].d:'9999';
+  return [...set].sort().map(d=>{
+    const v=DAGEN.find(x=>x.d===d);
+    return v?v:{d,fase:d<first?'Eerder':(d>last?'Na de toetsweek':''),taken:[]};
+  });
+}
+function stats(list){
+  const t=list.filter(x=>x.min>0);
+  const af=t.filter(x=>S.done[x.key]).length;
+  return {af,tot:t.length,rest:t.filter(x=>!S.done[x.key]).reduce((a,x)=>a+x.min,0),min:t.reduce((a,x)=>a+x.min,0)};
+}
+
+const meer=new Set();
+function labelsVan(x){
+  if(x.bron!=='magister') return `<br><span class="tag">zelf toegevoegd<\/span>`;
+  return `<br><span class="tag mag">Magister<\/span>${x.label?` <span class="tag">${esc(x.label)}<\/span>`:''}${x.pta?' <span class="tag pta">PTA<\/span>':''}${x.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}`;
+}
+function watHtml(t){
+  const w=String(t.wat||'');
+  if(w.length<=170||meer.has(t.key)) return esc(w);
+  return esc(w.slice(0,150).replace(/\s+\S*$/,''))+'…';
+}
+function meerKnop(t){
+  const w=String(t.wat||''); if(w.length<=170) return '';
+  return `<div class="nact"><button data-meer="${esc(t.key)}">${meer.has(t.key)?'Minder tekst':'Hele tekst'}<\/button><\/div>`;
+}
+function taskHtml(t){
+  if(!(t.min>0)) return `<li class="task done"><span><\/span><span class="txt"><span class="vak">${esc(t.vak)}<\/span> · <span class="w0">${watHtml(t)}<\/span>${t.eigen?labelsVan(t.eigen):''}<\/span><span><\/span>${meerKnop(t)}<\/li>`;
+  const id='c-'+t.key.replace(/[^a-z0-9-]/gi,'_'), on=!!S.done[t.key];
+  const dl=deadline(t);
+  let extra=dl?`<br><span class="dl">${esc(dl)}<\/span>`:'';
+  if(t.eigen) extra+=labelsVan(t.eigen);
+  const hulp=S.notes[t.key]&&S.notes[t.key].hulp;
+  let del='';
+  if(t.eigen && !S.readOnly){
+    del = pendingDel===t.eigen.id
+      ? `<div class="del"><span class="meta">Weet je het zeker?<\/span><button class="ja" data-delyes="${esc(t.eigen.id)}">Ja, verwijderen<\/button><button data-delno="1">Nee<\/button><\/div>`
+      : `<div class="del"><button data-delask="${esc(t.eigen.id)}">Verwijderen<\/button><\/div>`;
+  }
+  return `<li class="task ${on?'done':''} ${hulp?'hulp':''}"><label for="${id}"><input type="checkbox" id="${id}" data-k="${esc(t.key)}" ${on?'checked':''} ${S.readOnly?'disabled':''}><span class="txt"><span class="vak">${esc(t.vak)}<\/span> · <span class="w">${watHtml(t)}<\/span>${extra}<\/span><span class="min">${t.min} min<\/span><\/label>${meerKnop(t)}${noteHtml(t)}${del}<\/li>`;
+}
+function stofVan(T){
+  const vast=T.stof.map((s,i)=>({key:'ts-'+T.id+'-'+i,vak:'',wat:s,min:1}));
+  const eigen=S.extra.filter(x=>x.soort==='toetsstof'&&x.toets===T.id).sort((a,b)=>(a.t||0)-(b.t||0))
+    .map(x=>({key:'tx-'+x.id,vak:'',wat:x.wat,min:1,eigen:x}));
+  return vast.concat(eigen);
+}
+function stofHtml(t){
+  const id='c-'+t.key.replace(/[^a-z0-9-]/gi,'_'), on=!!S.done[t.key];
+  let del='';
+  if(t.eigen && !S.readOnly){
+    del = pendingDel===t.eigen.id
+      ? `<div class="del"><span class="meta">Weet je het zeker?<\/span><button class="ja" data-delyes="${esc(t.eigen.id)}">Ja, verwijderen<\/button><button data-delno="1">Nee<\/button><\/div>`
+      : `<div class="del"><button data-delask="${esc(t.eigen.id)}">Verwijderen<\/button><\/div>`;
+  }
+  const hulp=S.notes[t.key]&&S.notes[t.key].hulp;
+  return `<li class="task ${on?'done':''} ${hulp?'hulp':''}"><label for="${id}"><input type="checkbox" id="${id}" data-k="${esc(t.key)}" ${on?'checked':''} ${S.readOnly?'disabled':''}><span class="txt"><span class="w">${watHtml(t)}<\/span>${t.eigen?'<br><span class="tag">zelf toegevoegd<\/span>':''}<\/span><span class="min">${on?'geleerd':''}<\/span><\/label>${meerKnop(t)}${noteHtml(t)}${del}<\/li>`;
+}
+
+// ---------- tekenen ----------
+function render(){
+  const openD=[...document.querySelectorAll('details[open]')].map(x=>x.dataset.id);
+  const ta=$('noteTxt'), hadFocus=ta&&document.activeElement===ta;
+  if(ta) draft=ta.value;
+  const hb=$('noteHulp'), hulpDraft=hb?hb.checked:null;
+
+  // hulpvragen bovenaan: signalen komen naar jou toe
+  const vragen=Object.entries(S.notes).filter(([k,n])=>n&&n.hulp).sort((a,b)=>(a[1].t||0)-(b[1].t||0));
+  $('hulp').hidden=!vragen.length;
+  const ut=$('uitlegTxt'), utFocus=ut&&document.activeElement===ut; if(ut) uitlegDraft=ut.value;
+  const kind=isKind();
+  const okTxt=kind?'Gelukt':'✓ Afgehandeld';
+  const item=([k,n])=>{
+    const u=uitlegVan(n);
+    let h=`<li><div><b>${esc(n.label||labelVan(k))}<\/b>${n.tekst?`<span>${esc(n.tekst)}<\/span>`:''}`;
+    if(!kind&&snaptNiet(n)) h+=` <span class="tag wijz">Snapt het nog niet<\/span>`;
+    if(!kind&&u.length) h+=`<span class="meta">Uitleg gestuurd (${u.length}×), laatst ${esc(new Date(laatsteUitleg(n)).toLocaleString('nl-NL',{weekday:'short',hour:'2-digit',minute:'2-digit'}))}<\/span>`;
+    h+=`<\/div>`;
+    if(kind) h+=uitlegHtml(k,n);
+    const ok=S.readOnly||(kind&&u.length)?'':`<button data-nhulpoff="${esc(k)}">${okTxt}<\/button>`;
+    const stuur=S.readOnly||uitlegKey===k?'':`<button class="prim" data-ustuur="${esc(k)}">✍ Uitleg sturen<\/button>`;
+    h+=`<div class="hact"><a class="claudelink sm" href="${esc(claudeUrl(vraagVoorClaude(k)))}" target="_blank" rel="noopener" data-hclaude="${esc(k)}">Vraag Claude<\/a>${stuur}${zoekHtml(k)}${ok}<\/div>`;
+    if(!kind&&uitlegKey===k) h+=uitlegForm(k);
+    return h+'<\/li>';
+  };
+  const groep=(titel,lijst)=>lijst.length?`<h3>${titel}<\/h3><ul>${lijst.map(item).join('')}<\/ul>`:'';
+  const nNieuw=kind?vragen.filter(([k,n])=>nieuweUitleg(n)).length:0, nNiet=!kind?vragen.filter(([k,n])=>snaptNiet(n)).length:0;
+  $('hulp').innerHTML=vragen.length?`<h2>Hulp gevraagd (${vragen.length})${nNieuw?` · ${nNieuw} nieuwe uitleg`:''}${nNiet?` · ${nNiet}× snapt het nog niet`:''}<\/h2>`+
+    groep('Aan mama',vragen.filter(([k,n])=>n.voor!=='docent'))+groep('Aan de docent (in de les vragen)',vragen.filter(([k,n])=>n.voor==='docent')):'';
+  const sgi=$('sgInput'), sgFocus=sgi&&document.activeElement===sgi; if(sgi) sgDraft=sgi.value;
+  const today=vandaag(), dagen=alleDagen();
+  let ti=dagen.findIndex(x=>x.d>=today); if(ti<0) ti=dagen.length-1;
+  if(!dagen.length){
+    $('today').innerHTML=`<div class="head"><h2>Nog niets gepland<\/h2><\/div><p class="meta">Lees de afsprakenlijst uit Magister in, of voeg zelf huiswerk toe.<\/p>`;
+  } else {
+  const day=dagen[ti], tl=takenVan(day.d), s=stats(tl);
+  const dToets=toetsOp(day.d);
+  let komend=null;
+  { const kt=alleToetsen().find(T=>T.d>day.d); const kv=DAGEN.find(x=>x.toets&&x.d>day.d);
+    if(kv&&(!kt||kv.d<=kt.d)) komend={d:kv.d,toets:kv.toets}; else if(kt) komend={d:kt.d,toets:kt.vak+' · '+kt.wat}; }
+  $('today').innerHTML=`
+    <div class="head"><h2>${day.d===today?'Vandaag':'Eerstvolgende dag'}: ${esc(lang(day.d))}<\/h2><span class="meta">${s.af}/${s.tot} af · nog ± ${uren(s.rest)}<\/span><\/div>
+    ${dToets?`<div class="flag"><div><b>Toets vandaag<\/b>${esc(dToets)}<\/div><\/div>`:''}
+    ${!dToets&&komend?`<div class="flag"><div><b>Volgende toets: ${esc(kort(komend.d))}<\/b>${esc(komend.toets)}<\/div><\/div>`:''}
+    <ul class="list">${tl.map(taskHtml).join('')||'<li class="meta">Niets gepland.<\/li>'}<\/ul>`;
+  }
+
+  // toetsen
+  $('toetsen').innerHTML=alleToetsen().filter(T=>T.d>=today).map(T=>{
+    const st=stofVan(T), af=st.filter(x=>S.done[x.key]).length, all=af===st.length;
+    const did='t-'+T.id;
+    return `<details class="toets ${all?'alldone':''}" data-id="${did}" ${openD.includes(did)?'open':''}>
+      <summary><span class="dn">${esc(T.vak)} · ${esc(kort(T.d))}${T.tijd!=='les'?' · '+esc(T.tijd):''}<\/span><span class="pc">${all?'✓':af+'/'+st.length}<\/span>
+      <span class="sub">${esc(T.wat)}${T.pta?' <span class="tag pta">PTA<\/span>':''}${T.bron?' <span class="tag mag">Magister<\/span>':''}${T.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}<\/span><\/summary>
+      <div class="inner"><ul class="list">${st.map(stofHtml).join('')}<\/ul>${sgHtml(T)}<\/div><\/details>`;
+  }).join('')||'<div class="meta">Geen toetsen meer gepland.<\/div>';
+
+  // dagen
+  let fase='',h='';
+  dagen.forEach((d,j)=>{
+    if(d.fase&&d.fase!==fase){fase=d.fase;h+=`<div class="phase">${esc(fase)}<\/div>`;}
+    const list=takenVan(d.d), st=stats(list), all=st.tot&&st.af===st.tot, did='d-'+d.d;
+    h+=`<details data-id="${did}" class="${j===ti?'istoday':''} ${all?'alldone':''}" ${openD.includes(did)?'open':''}>
+      <summary><span class="dn">${esc(kort(d.d))}${j===ti?' · vandaag':''}<\/span><span class="pc">${st.tot?(all?'✓':st.af+'/'+st.tot):''}<\/span>
+      <span class="sub">${toetsOp(d.d)?'<b>Toets: '+esc(toetsOp(d.d))+'<\/b> · ':''}${st.min?'± '+uren(st.min):''}<\/span><\/summary>
+      <div class="inner"><ul class="list">${list.map(taskHtml).join('')}<\/ul><\/div><\/details>`;
+  });
+  $('days').innerHTML=h;
+
+  // totaal (alleen taken, geen toetsstof)
+  let a=0,t=0; dagen.forEach(d=>{const s=stats(takenVan(d.d));a+=s.af;t+=s.tot});
+  $('totalTxt').textContent=`${a} van de ${t} taken af`;
+  $('totalBar').style.width=(t?Math.round(a/t*100):0)+'%';
+
+  $('opslag').textContent=(SP.inhoud.bron?SP.inhoud.bron+' ':'')+'De minuten zijn een schatting. '+
+    (S.mode==='db'?(S.readOnly?'Je kunt hier alleen kijken.':'Vinkjes en toegevoegde items worden online bewaard, iedereen met toegang ziet hetzelfde.')
+                 :'Vinkjes en toegevoegde items worden nu alleen op dit apparaat bewaard.');
+  if($('panel').hidden) $('openAdd').hidden=S.readOnly;
+  if($('impPanel').hidden) $('openImp').hidden=S.readOnly;
+
+  // notitie die je aan het typen was terugzetten
+  const nt=$('noteTxt');
+  if(nt){ if(draft!=null) nt.value=draft; if(hulpDraft!=null) $('noteHulp').checked=hulpDraft; if(hadFocus){ nt.focus(); nt.setSelectionRange(nt.value.length,nt.value.length); } }
+  const sg2=$('sgInput'); if(sg2&&sgFocus){ sg2.focus(); }
+  const ut2=$('uitlegTxt'); if(ut2&&utFocus){ ut2.focus(); ut2.setSelectionRange(ut2.value.length,ut2.value.length); }
+}
+
+// klikken in lijsten (één keer gekoppeld)
+document.addEventListener('change',e=>{ const c=e.target.closest('input[data-k]'); if(c) setDone(c.dataset.k,c.checked); });
+function kopieer(tekst){
+  try{ return navigator.clipboard.writeText(tekst).then(()=>true,()=>false); }catch(e){ return Promise.resolve(false); }
+}
+document.addEventListener('click',e=>{
+  const g=e.target.closest('a[data-goto]');
+  if(g){ e.preventDefault(); const d=$(g.dataset.goto); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } return; }
+  const a=e.target.closest('a[data-nclaude]');
+  if(a){ // link opent Claude in een nieuw tabblad; tegelijk de vraag kopiëren
+    const k=a.dataset.nclaude, tx=vraagVoorClaude(k);
+    a.href=claudeUrl(tx);
+    kopieer(tx).then(ok=>toast(ok?'Vraag gekopieerd. Plak hem in Claude.':'Kopiëren lukte niet. Selecteer de tekst in het vak.'));
+    claudeKey=k; setTimeout(render,0); return;
+  }
+  const hc=e.target.closest('a[data-hclaude]');
+  if(hc){ const tx=vraagVoorClaude(hc.dataset.hclaude); hc.href=claudeUrl(tx); kopieer(tx).then(ok=>{ if(ok) toast('Claude opent met de vraag. Ook gekopieerd, voor de zekerheid.'); }); return; }
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.ccopy){ e.preventDefault(); kopieer(vraagVoorClaude(b.dataset.ccopy)).then(ok=>{ toast(ok?'Vraag gekopieerd':'Kopiëren lukte niet. Selecteer de tekst.'); if(!ok){ const t=$('claudeTxt'); if(t){t.focus();t.select();} } }); return; }
+  if(b.dataset.cclose){ e.preventDefault(); claudeKey=null; render(); return; }
+  if(b.dataset.ustuur){ e.preventDefault(); uitlegKey=b.dataset.ustuur; uitlegDraft=''; render(); const u=$('uitlegTxt'); if(u) u.focus(); return; }
+  if(b.dataset.ucancel){ e.preventDefault(); uitlegKey=null; uitlegDraft=null; render(); return; }
+  if(b.dataset.uverstuur){ e.preventDefault(); const k=b.dataset.uverstuur, tx=schoonTekst($('uitlegTxt').value);
+    if(!tx){ toast('Schrijf of plak eerst de uitleg.'); return; }
+    uitlegKey=null; uitlegDraft=null;
+    zetNoteVelden(k,{uitleg:uitlegVan(S.notes[k]).concat({tekst:tx,t:Date.now()})}); toast('Uitleg verstuurd'); return; }
+  if(b.dataset.usnap){ e.preventDefault(); const k=b.dataset.usnap, n=S.notes[k]||{}; n.gezien=Date.now(); setNote(k,n.tekst,false,n.label,n.voor); toast('Top! Vraag is afgesloten.'); return; }
+  if(b.dataset.unog){ e.preventDefault(); const k=b.dataset.unog; zetNoteVelden(k,{nogNiet:Date.now(),gezien:Date.now()}); toast('Doorgegeven aan mama. '+kiesMelding(),7000); return; }
+  if(b.dataset.meer){ e.preventDefault(); const k=b.dataset.meer; meer.has(k)?meer.delete(k):meer.add(k); render(); return; }
+  if(b.dataset.delask){ e.preventDefault(); pendingDel=b.dataset.delask; render(); }
+  else if(b.dataset.delno){ e.preventDefault(); pendingDel=null; render(); }
+  else if(b.dataset.delyes){ e.preventDefault(); const id=b.dataset.delyes; pendingDel=null; delExtra(id); toast('Verwijderd'); }
+  else if(b.dataset.nedit){ e.preventDefault(); editKey=b.dataset.nedit; draft=null; render(); const nt=$('noteTxt'); if(nt) nt.focus(); }
+  else if(b.dataset.ncancel){ e.preventDefault(); editKey=null; draft=null; render(); }
+  else if(b.dataset.nsave){ e.preventDefault(); const k=b.dataset.nsave, tx=$('noteTxt').value, h=$('noteHulp').checked, vr=(document.querySelector('input[name=noteVoor]:checked')||{}).value; editKey=null; draft=null; setNote(k,tx,h,labelVan(k),vr); if(h) hulpVerstuurd(); else toast('Notitie opgeslagen'); }
+  else if(b.dataset.nclear){ e.preventDefault(); const k=b.dataset.nclear; setNote(k,'',false); toast('Notitie weggehaald'); }
+  else if(b.dataset.nhulp){ e.preventDefault(); editKey=b.dataset.nhulp; draft=null; render(); const hb=$('noteHulp'); if(hb) hb.checked=true; const nt=$('noteTxt'); if(nt){ nt.placeholder='Waar loop je vast?'; nt.focus(); } }
+  else if(b.dataset.nhulpoff){ e.preventDefault(); const k=b.dataset.nhulpoff, n=S.notes[k]||{}; setNote(k,n.tekst,false,n.label,n.voor); toast('Fijn, hulp is gelukt'); }
+  else if(b.dataset.sgedit){ e.preventDefault(); sgEdit=b.dataset.sgedit; sgDraft=null; render(); const i=$('sgInput'); if(i) i.focus(); }
+  else if(b.dataset.sgcancel){ e.preventDefault(); sgEdit=null; render(); }
+  else if(b.dataset.sgdel){ e.preventDefault(); const id=b.dataset.sgdel; sgEdit=null; mapSet('links',id,null); toast('Link weggehaald'); }
+  else if(b.dataset.sgsave){ e.preventDefault(); let u=$('sgInput').value.trim(); if(u&&!/^https?:\/\//i.test(u)) u='https://'+u;
+    if(!/^https:\/\/[^\s]+\.[^\s]+/i.test(u)){ toast('Plak de hele link, bijv. https://studygo.com/...'); return; }
+    const id=b.dataset.sgsave; sgEdit=null; sgDraft=null; mapSet('links',id,{url:u,t:Date.now()}); toast('StudyGo-link opgeslagen'); }
+});
+
+// ---------- toevoegen ----------
+let soort='huiswerk', andereDag=false;
+const vulVakken=()=>{ $('hwVak').innerHTML=vakkenLijst().map(v=>`<option>${esc(v)}<\/option>`).join(''); };
+function vulToetsen(){ const t=vandaag(); $('tsToets').innerHTML=alleToetsen().filter(T=>T.d>=t).map(T=>`<option value="${T.id}">${esc(T.vak)} · ${esc(kort(T.d))}<\/option>`).join(''); }
+function zetSoort(s){
+  soort=s; $('segHw').setAttribute('aria-pressed',s==='huiswerk'); $('segTs').setAttribute('aria-pressed',s==='toetsstof');
+  $('fHw').hidden=s!=='huiswerk'; $('fHw').style.display=s==='huiswerk'?'grid':'none'; $('fTs').hidden=s!=='toetsstof'; $('fTs').style.display=s==='toetsstof'?'grid':'none';
+  $('addMsg').hidden=true;
+}
+function makenTekst(){
+  const af=$('hwAf').value;
+  if(!af){ $('hwMaken').textContent='Kies eerst de dag waarop het af moet zijn.'; return; }
+  const dag=andereDag&&$('hwDag').value?$('hwDag').value:dagVoor(af);
+  if(!andereDag) $('hwDag').value=dag;
+  $('hwMaken').innerHTML=`Je maakt het op <b>${esc(lang(dag))}<\/b>, zodat je het op ${esc(kort(af))} kunt meenemen.`;
+}
+$('openAdd').onclick=()=>{ vulVakken(); vulToetsen(); zetSoort('huiswerk'); andereDag=false; $('hwDagWrap').hidden=true; $('panel').hidden=false; $('openAdd').hidden=true; makenTekst(); $('hwWat').focus(); };
+$('cancel').onclick=()=>{ $('panel').hidden=true; $('openAdd').hidden=S.readOnly; };
+$('segHw').onclick=()=>zetSoort('huiswerk'); $('segTs').onclick=()=>zetSoort('toetsstof');
+$('hwAf').oninput=makenTekst; $('hwDag').oninput=makenTekst;
+$('hwAnders').onclick=()=>{ andereDag=true; $('hwDagWrap').hidden=false; makenTekst(); $('hwDag').focus(); };
+$('save').onclick=async()=>{
+  const msg=t=>{ $('addMsg').textContent=t; $('addMsg').hidden=false; };
+  let item;
+  if(soort==='huiswerk'){
+    const wat=$('hwWat').value.trim(), af=$('hwAf').value;
+    if(!wat) return msg('Schrijf op wat je moet doen.');
+    if(!af) return msg('Kies de dag waarop het af moet zijn.');
+    const dag=andereDag&&$('hwDag').value?$('hwDag').value:dagVoor(af);
+    item={soort:'huiswerk',vak:$('hwVak').value,wat,af,dag,min:Math.max(5,Math.min(240,+$('hwMin').value||30)),t:Date.now()};
+  } else {
+    const wat=$('tsWat').value.trim();
+    if(!$('tsToets').value) return msg('Er zijn geen toetsen meer om iets aan toe te voegen.');
+    if(!wat) return msg('Schrijf op wat je moet leren.');
+    item={soort:'toetsstof',toets:$('tsToets').value,wat,t:Date.now()};
+  }
+  $('save').disabled=true;
+  const ok=await addExtra(item);
+  $('save').disabled=false;
+  if(ok){
+    $('hwWat').value=''; $('tsWat').value=''; $('panel').hidden=true; $('openAdd').hidden=S.readOnly;
+    toast(item.soort==='huiswerk'?'Opgeslagen op '+kort(item.dag):'Toegevoegd aan de toetsstof');
+  }
+};
+
+// ---------- afsprakenlijst uit Magister inlezen (PDF) ----------
+// De PDF wordt hier in de browser gelezen. Namen van docenten en lokalen worden niet bewaard.
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfjsKlaar=null;
+function laadPdfjs(){
+  if(pdfjsKlaar) return pdfjsKlaar;
+  pdfjsKlaar=new Promise((ok,nok)=>{
+    const sc=document.createElement('script'); sc.src=PDFJS+'pdf.min.js';
+    sc.onload=()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; ok(window.pdfjsLib); };
+    sc.onerror=()=>{ pdfjsKlaar=null; nok(new Error('laden')); };
+    document.head.appendChild(sc);
+  });
+  return pdfjsKlaar;
+}
+const MAANDEN=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+const DATUMREGEL=/^(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\s+(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?$/i;
+const SOORT_HW=/^(huiswerk|inleveren|inleveropdracht|opdracht)$/i;
+const SOORT_TOETS=/^(proefwerk|toets|tentamen|schriftelijk|schriftelijke overhoring|so|mondeling|mondelinge overhoring|pta|praktische opdracht|presentatie|overhoring)$/i;
+const SOORT_INFO=/^(informatie|info|mededeling)$/i;
+const isSoort=t=>SOORT_HW.test(t)||SOORT_TOETS.test(t)||SOORT_INFO.test(t);
+const GEEN_HW=/keine hausaufgaben|geen huiswerk|no homework|pas de devoirs|geen hw\b/i;
+const mediaan=a=>{ if(!a.length) return null; const b=a.slice().sort((x,y)=>x-y); return b[Math.floor(b.length/2)]; };
+
+function datumUit(m){
+  const dag=+m[2], mi=MAANDEN.indexOf(m[3].toLowerCase()); if(mi<0) return null;
+  const nu=new Date(); let jaar=m[4]?+m[4]:nu.getFullYear();
+  if(!m[4]){ const c=new Date(jaar,mi,dag), diff=(c-nu)/864e5; if(diff<-180) jaar++; else if(diff>180) jaar--; }
+  return iso(new Date(jaar,mi,dag));
+}
+
+async function leesAfsprakenlijst(file){
+  const lib=await laadPdfjs();
+  const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const items=[];
+  for(let p=1;p<=doc.numPages;p++){
+    const tc=await (await doc.getPage(p)).getTextContent();
+    tc.items.forEach(it=>{ const s=String(it.str||'').trim(); if(s) items.push({p,x:it.transform[4],y:it.transform[5],s}); });
+  }
+  // kolommen: soort (Huiswerk/Proefwerk) en omschrijving (daar staat '-' als er niets is)
+  const typeX=mediaan(items.filter(i=>isSoort(i.s)).map(i=>i.x));
+  if(typeX==null) return [];
+  let omsX=mediaan(items.filter(i=>i.s==='-'&&i.x>typeX).map(i=>i.x));
+  if(omsX==null){ const r=items.filter(i=>i.x>typeX+20).map(i=>i.x); omsX=r.length?Math.min(...r):typeX+60; }
+  // regels per pagina, van boven naar beneden
+  items.sort((a,b)=>a.p-b.p||b.y-a.y||a.x-b.x);
+  const regels=[];
+  items.forEach(i=>{ const r=regels[regels.length-1];
+    if(r&&r.p===i.p&&Math.abs(r.y-i.y)<2.5) r.items.push(i); else regels.push({p:i.p,y:i.y,items:[i]}); });
+  const lessen=[]; let datum=null, les=null;
+  regels.forEach(r=>{
+    r.items.sort((a,b)=>a.x-b.x);
+    const alles=r.items.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
+    if(/^Afsprakenlijst van/i.test(alles)) return;
+    if(/\d+\/\d+$/.test(alles)&&/ om \d{1,2}:\d{2}/.test(alles)) return;          // voettekst
+    const dm=alles.match(DATUMREGEL); if(dm){ datum=datumUit(dm); les=null; return; }
+    const links=r.items.filter(i=>i.x<typeX-3).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
+    const soort=r.items.filter(i=>i.x>=typeX-3&&i.x<omsX-3).map(i=>i.s).join(' ').trim();
+    const oms=r.items.filter(i=>i.x>=omsX-3).map(i=>i.s).join(' ').trim();
+    const tm=links.match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s*(\d{1,2})?\s*(.*)$/);
+    if(datum&&tm){ les={datum,tijd:tm[1],uur:tm[3]||'',vak:tm[4].trim(),soort,oms:oms?[oms]:[]}; lessen.push(les); return; }
+    if(les){ if(oms) les.oms.push(oms); if(soort) les.soort=(les.soort+' '+soort).trim(); }   // links = docent en lokaal: niet bewaren
+  });
+  return lessen.map(l=>({...l,oms:l.oms.join(' ').replace(/\s+/g,' ').replace(/\s+([,.!?:;])/g,'$1').trim()}));
+}
+
+const slug=v=>String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+function maakItems(lessen){
+  const uit=[], over=[];
+  lessen.forEach(l=>{
+    if(!l.soort||!l.oms||l.oms==='-') return;                 // geen afspraak met huiswerk
+    const base={vak:l.vak};
+    if(SOORT_INFO.test(l.soort)){ over.push({...base,datum:l.datum,wat:l.oms,reden:'informatie'}); return; }
+    if(GEEN_HW.test(l.oms)){ over.push({...base,datum:l.datum,wat:l.oms,reden:'geen huiswerk'}); return; }
+    const id='m-'+l.datum+'-'+(l.uur||slug(l.tijd))+'-'+slug(l.vak);
+    const pta=/\bPTA\b/i.test(l.soort+' '+l.oms);
+    if(SOORT_TOETS.test(l.soort)){
+      uit.push({id,item:{soort:'toets',vak:l.vak,d:l.datum,tijd:'les',wat:l.soort.charAt(0).toUpperCase()+l.soort.slice(1).toLowerCase(),stof:[l.oms],pta,bron:'magister'}});
+    } else {
+      const inles=/in de les/i.test(l.oms);
+      uit.push({id,item:{soort:'huiswerk',vak:l.vak,wat:l.oms,af:l.datum,dag:dagVoor(l.datum),min:inles?0:30,label:inles?'in de les':'',pta,bron:'magister'}});
+    }
+  });
+  return {uit,over};
+}
+// vergelijk met wat er al is
+function vergelijk({uit,over}){
+  const res={nieuw:[],gewijzigd:[],bekend:[],over};
+  uit.forEach(x=>{
+    const ex=S.extra.find(e=>e.id===x.id), it=x.item;
+    if(ex){
+      const oud=it.soort==='toets'?(ex.stof||[]).join(' '):ex.wat, nw=it.soort==='toets'?it.stof.join(' '):it.wat;
+      (oud===nw?res.bekend:res.gewijzigd).push({...x,oud});
+      return;
+    }
+    const dubbel=it.soort==='toets'
+      ? TOETSEN.some(T=>T.vak===it.vak&&T.d===it.d)
+      : DAGEN.some(D=>D.taken.some(t=>t[0]===it.vak&&t[3]===it.af))||S.extra.some(e=>e.bron!=='magister'&&e.soort==='huiswerk'&&e.vak===it.vak&&e.af===it.af);
+    (dubbel?res.bekend:res.nieuw).push({...x,dubbel});
+  });
+  return res;
+}
+let impRes=null;
+function impRegel(x,soort){
+  const it=x.item, wanneer=it.soort==='toets'?'Toets '+kort(it.d):'Af '+kort(it.af);
+  const tekst=it.soort==='toets'?it.stof.join(' '):it.wat;
+  const kort150=t=>t.length>150?t.slice(0,140)+'…':t;
+  return `<li><input type="checkbox" data-impid="${esc(x.id)}" checked aria-label="${esc(it.vak)} meenemen"><div><b>${esc(it.vak)}<\/b> · <span class="meta">${esc(wanneer)}<\/span>${it.pta?' <span class="tag pta">PTA<\/span>':''}<br>${esc(kort150(tekst))}${soort==='gewijzigd'?`<span class="oud">${esc(kort150(x.oud||''))}<\/span>`:''}<\/div><\/li>`;
+}
+function toonImport(res){
+  impRes=res;
+  const n=res.nieuw.length, g=res.gewijzigd.length;
+  const lijst=(t,a,soort)=>a.length?`<h3>${t}<\/h3><ul class="implist">${a.map(x=>impRegel(x,soort)).join('')}<\/ul>`:'';
+  const rest=res.bekend.map(x=>`<li><span>✓<\/span><div><b>${esc(x.item.vak)}<\/b> · ${esc(x.dubbel?'staat al in de planner':'al ingelezen')}<\/div><\/li>`)
+    .concat(res.over.map(x=>`<li><span>–<\/span><div><b>${esc(x.vak)}<\/b> · ${esc(kort(x.datum))}: ${esc(x.reden)}<\/div><\/li>`)).join('');
+  $('impPanel').innerHTML=`<h2>Gevonden in Magister<\/h2>
+    <div class="impsum"><span>✚ <b>${n}<\/b> nieuw<\/span><span>✎ <b>${g}<\/b> gewijzigd door school<\/span><span>✓ <b>${res.bekend.length}<\/b> al bekend<\/span><span>– <b>${res.over.length}<\/b> overgeslagen<\/span><\/div>
+    ${lijst('Nieuw',res.nieuw,'nieuw')}${lijst('Gewijzigd door school (oude tekst doorgestreept)',res.gewijzigd,'gewijzigd')}
+    ${rest?`<details><summary><span class="dn">Al bekend en overgeslagen<\/span><\/summary><div class="inner"><ul class="implist">${rest}<\/ul><\/div><\/details>`:''}
+    <div class="row">${n+g?`<button class="prim" data-imp="ok">Toevoegen<\/button>`:''}<button data-imp="stop">${n+g?'Annuleren':'Sluiten'}<\/button><\/div>`;
+  $('impPanel').hidden=false; $('openImp').hidden=true;
+  $('impPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function sluitImport(){ impRes=null; $('impPanel').hidden=true; $('impPanel').innerHTML=''; $('openImp').hidden=S.readOnly; }
+async function voerImportUit(){
+  const aan=new Set([...document.querySelectorAll('#impPanel input[data-impid]:checked')].map(i=>i.dataset.impid));
+  const nieuw=impRes.nieuw.filter(x=>aan.has(x.id)), gew=impRes.gewijzigd.filter(x=>aan.has(x.id));
+  const nu=Date.now();
+  for(const x of nieuw){
+    const d={...x.item,t:nu};
+    if(S.mode==='db'){ try{ await S.db.collection('extra').doc(x.id).set(d); }catch(e){ writeFail(e); return; } }
+    else { S.extra.push({...d,id:x.id}); }
+  }
+  for(const x of gew){
+    const d=x.item.soort==='toets'?{stof:x.item.stof,pta:x.item.pta,gewijzigd:nu,oud:x.oud}:{wat:x.item.wat,label:x.item.label,gewijzigd:nu,oud:x.oud};
+    if(S.mode==='db'){ try{ await S.db.collection('extra').doc(x.id).update(d); }catch(e){ writeFail(e); return; } }
+    else { Object.assign(S.extra.find(e=>e.id===x.id)||{},d); }
+  }
+  if(S.mode!=='db') saveLocal();
+  sluitImport(); render();
+  toast(`${nieuw.length} toegevoegd, ${gew.length} bijgewerkt`);
+}
+$('openImp').onclick=()=>$('impFile').click();
+$('impFile').onchange=async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
+  $('impPanel').innerHTML='<p class="meta">Afsprakenlijst lezen…<\/p>'; $('impPanel').hidden=false;
+  try{
+    const lessen=await leesAfsprakenlijst(f);
+    if(!lessen.length){ $('impPanel').innerHTML='<p>Hier vond ik geen lessen in. Is dit de afsprakenlijst uit Magister?<\/p><div class="row"><button data-imp="stop">Sluiten<\/button><\/div>'; return; }
+    toonImport(vergelijk(maakItems(lessen)));
+  }catch(err){
+    $('impPanel').innerHTML=`<p>Inlezen lukte niet${err&&err.message==='laden'?' (geen verbinding?)':''}. Probeer het zo nog eens.<\/p><div class="row"><button data-imp="stop">Sluiten<\/button><\/div>`;
+  }
+};
+$('impPanel').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-imp]'); if(!b) return; e.preventDefault();
+  if(b.dataset.imp==='stop') sluitImport(); else if(b.dataset.imp==='ok') voerImportUit();
+});
+
+let toastT=null;
+function toast(t,ms){ const el=$('toast'); el.textContent=t; el.className='toast'+(ms?' lang':''); el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,ms||2600); }
+
+// ---------- flitskaarten Grieks (TB p.20–22) ----------
+// {v: voorkant, a: achterkant, tip: ezelsbruggetje, u: uitleg}
+const K=(v,a,tip,u)=>({v,a,tip:tip||'',u:u||''});
+const FC = {
+ letters:[
+  K('α Α','alfa · a','alfa begint met een a, net als alfabet.'),
+  K('β Β','bèta · b','Lijkt op een B met een staartje naar beneden.'),
+  K('γ Γ','gamma · g (als in Engels "good")','Lijkt op een y, maar gamma is een g: een g met een lusje.','Vóór γ, κ, χ of ξ klinkt γ als ng, zoals in "bang": ἄγγελος spreek je uit als angkelos.'),
+  K('δ Δ','delta · d','Δ is een driehoek, denk aan de deltawerken. De kleine δ is een d met een krul.'),
+  K('ε Ε','epsilon · ee/e','Lijkt op onze e (of een 3 achterstevoren). Epsilon is de korte e.'),
+  K('ζ Ζ','dzèta · dz of zd','Zigzag: de Z wordt dz.'),
+  K('η Η','èta · è (als in Frans "bête")','Lange poot, lange klank: è. Het is geen n!','η is altijd een lange klinker. De hoofdletter Η lijkt op onze H, maar is ook een è.'),
+  K('θ Θ','thèta · t/th','Een rondje met een streep erdoor, als een duim (thumb): th.'),
+  K('ι Ι','iota · i','"Ik snap er geen iota van": de kleinste letter, een streepje zonder puntje.'),
+  K('κ Κ','kappa · k','Ziet eruit als onze k.'),
+  K('λ Λ','labda · l','Λ is een omgekeerde V, als twee benen die lopen: Lopen begint met l.'),
+  K('μ Μ','mu · m','Een u met een staart naar beneden, als een muis met staart: m.'),
+  K('ν Ν','nu · n','Ziet eruit als een v, maar "nu" begint met een n.'),
+  K('ξ Ξ','ksi · ks, x','Een kronkelige slang die sist: ks.'),
+  K('ο Ο','omikron · o','o-MIKRO-n: micro is klein, dus een korte o.'),
+  K('π Π','pi · p','Net als π bij wiskunde: p.'),
+  K('ρ Ρ','rho · r','Lijkt op een p, maar rho rolt: rrr. Ook de hoofdletter Ρ is een r.'),
+  K('σ ς Σ','sigma · s','Een rondje met een staartje, als een slang: s. De ς komt aan het Slot van een woord (βάσις).'),
+  K('τ Τ','tau · t','Een T met een boogje: t.'),
+  K('υ Υ','upsilon · uu/u','Lijkt op een u. De hoofdletter Υ lijkt op een Y, maar het is ook een u.'),
+  K('φ Φ','phi · ph/f','Een o met een paal erdoor: f, zoals in filosofie (φιλοσοφία).','Oorspronkelijk sprak je φ uit als in het Engelse "power", dus p met een h erachter.'),
+  K('χ Χ','chi · kh/ch','Lijkt op een x, maar het is ch, zoals in chaos (χάος). De x is ξ!'),
+  K('ψ Ψ','psi · ps','De drietand van Poseidon. Psi zoals in psychologie.'),
+  K('ω Ω','omega · oo','o-MEGA: mega is groot, dus een lange oo. Lijkt op twee o’s naast elkaar. Het is geen w!','Oorspronkelijk uitgesproken als in het Engelse "morning".')],
+ klanken:[
+  K('αι','tweeklank · aj','Zeg a-i heel snel achter elkaar: aj.'),
+  K('ει','tweeklank · ei','Net als ei in het Nederlands.','Oorspronkelijk sprak je het uit als in "zee".'),
+  K('οι','tweeklank · oj','Zoals in "hoi".'),
+  K('αυ','tweeklank · au','Zoals "au, dat doet pijn!"'),
+  K('ευ','tweeklank · ui','Denk aan Europa (Εὐρώπη), maar wij zeggen ui.','Oorspronkelijk uitgesproken als in "eeuw".'),
+  K('ου','tweeklank · oe','o + u wordt oe, zoals in "oeps".','Oorspronkelijk uitgesproken als in "doos".'),
+  K('ᾳ','α + ι met iota subscriptum · aaj','Het streepje eronder is een iota: zeg er een j achter.','Een iota onder een lange klinker heet iota subscriptum.'),
+  K('ῃ','η + ι met iota subscriptum · èj','Streepje eronder: zeg er een j achter.'),
+  K('ῳ','ω + ι met iota subscriptum · ooj','Streepje eronder: zeg er een j achter.'),
+  K('Hoe heet een iota die onder een lange klinker staat?','iota subscriptum (“erondergeschreven” iota)','Sub is onder, zoals in subway (onder de grond).'),
+  K('Welke klinkers zijn altijd kort?','ε en ο','De kleine o (omikron) en de korte e zijn altijd kort.'),
+  K('Welke klinkers kunnen kort of lang zijn?','α, ι en υ','A-I-U: "Aai u" kan kort of lang duren.'),
+  K('Welke klinkers zijn altijd lang?','η en ω','Lange poot (η) en mega-o (ω) zijn altijd lang.'),
+  K('Van wie leerden de Grieken het alfabet?','Van de Phoeniciërs (huidige Libanon), in de 9de eeuw v.Chr.','Phoeniciërs waren handelaren: ze ruilden het ABC mee.','Het Phoenicische alfabet had alleen medeklinkers. De Grieken voegden er klinkers aan toe. Via de Grieken in Zuid-Italië kwam het alfabet bij de Romeinen, en zo bij ons.')],
+ tekens:[
+  K('ἀ  (᾿)','spiritus lenis = “zachte ademtocht”: niet hoorbaar · ἄνθρωπος = anthroopos (mens)','Lenis is lief en zacht: je hoort niks.','Een spiritus staat op elk woord dat met een klinker of tweeklank begint.'),
+  K('ἁ  (῾)','spiritus asper = “harde ademtocht”: uitspreken als h · ἥρως = hèroos (held)','Asper is hard, en hard begint met een h.'),
+  K('Wanneer staat er een spiritus op een woord?','Als het woord begint met een klinker of tweeklank','Begint het met een klinker? Dan moet je ademen: spiritus.'),
+  K('ῥόπαλον','ρ aan het begin van een woord heeft altijd een spiritus asper · knots','Rh, zoals in rhododendron.'),
+  K('Ἡρακλῆς','Spiritus bij een hoofdletter staat ervóór, linksboven · Herakles','Hoofdletter: tekentje staat er vóór, als een hoedje links.'),
+  K('αὐτός','Spiritus bij een tweeklank staat op de tweede letter · zelf','Tweeklank: tekentje op de tweede letter.'),
+  K('ά  (´)','acutus · klimmende toon','Acutus is acuut: scherp omhoog.','Het Griekse accent was muzikaal: een lettergreep met accent klonk hoger.'),
+  K('ᾶ  (῀)','circumflexus · klimmend-dalende toon','Het golfje gaat omhoog en weer omlaag.'),
+  K('ὰ  (`)','gravis · half-klimmende toon','Gravis is zwaar: hij klimt maar half.'),
+  K('θεός · καί','met accent · god · ook','Bijna alle Griekse woorden hebben een accent.'),
+  K('Hoe spreken wij in Nederland de klemtoon uit?','Volgens de Nederlandse klemtoonregels: meestal op de één na laatste of twee na laatste lettergreep','Gewoon zoals je een Nederlands woord zou zeggen.','In het moderne Grieks ligt de klemtoon op de lettergreep met het accent.'),
+  K(';','Grieks vraagteken = ?','De Grieken vragen het met een puntkomma.'),
+  K('·  (hoge punt)','= ; (puntkomma) of : (dubbele punt)','Een punt die omhoog is gesprongen.')]
+};
+// woorden: {v: Grieks, a: betekenis, uit: uitspraak}
+const W=(v,a,uit,tip,u)=>({...K(v,a,tip,u),uit});
+FC.les2=[
+  W('εἷς','een','heis','Spiritus asper: er komt een h voor.'),
+  W('δύο','twee','DU-o','Duo: met z’n tweeën.'),
+  W('τρεῖς','drie','treis','Lijkt op het Engelse three en ons trio.'),
+  W('τέτταρες','vier','TET-ta-res','Tetra = vier, zoals Tetris (blokjes van vier).'),
+  W('πέντε','vijf','PEN-te','Pentagon: vijf hoeken.'),
+  W('ἕξ','zes','heks','Hexagon: zeshoek. Een heks met zes vingers.'),
+  W('ἑπτά','zeven','HEP-ta','Heptathlon: zevenkamp.'),
+  W('ὀκτώ','acht','OK-too','Octopus: acht armen.'),
+  W('ἐννέα','negen','EN-ne-a','Ennea: zeg het negen keer snel.'),
+  W('δέκα','tien','DE-ka','Decimaal en decennium: tien.')];
+FC.les3=[
+  W('ἀλλά, ἀλλ’','maar','AL-la'),
+  W('δέ, δ’','1. en  2. maar','de','','δέ staat meestal op de 2de, soms op de 3de plaats in de zin. Meestal kun je δέ onvertaald laten, behalve na een komma.'),
+  W('εἰσί(ν)','(zij) zijn','EI-si(n)'),
+  W('ὁ δοῦλος','slaaf, tot slaaf gemaakte','ho DOE-los'),
+  W('ὁ θεός','god','ho TE-os','Theologie: kennis over god.'),
+  W('εἰς + acc.','naar, naar binnen, tot','eis'),
+  W('ἔχει','(hij, zij, het) heeft','E-chei'),
+  W('ἐστί(ν)','(hij, zij, het) is','ES-ti(n)','Lijkt op het Franse est en Latijnse est.'),
+  W('ἡ χώρα','land, streek','hè CHOO-ra'),
+  W('βαίνει','(hij, zij, het) gaat','BAJ-nei'),
+  W('γάρ','want','gar','','γάρ staat op de 2de plaats van de zin.'),
+  W('καί','1. en  2. ook  3. zelfs','kaj'),
+  W('λαμβάνει','(hij, zij, het) neemt, pakt (vast)','LAM-ba-nei'),
+  W('πρός + acc.','naar(toe), tot','pros'),
+  W('τί…;','waarom?','ti','Let op het Griekse vraagteken ;'),
+  W('νῦν','nu','nuun','Klinkt bijna als ons “nu”.'),
+  W('ὁ ἄνθρωπος','1. mens  2. man','ho an-THROO-pos','Antropologie: kennis over de mens.'),
+  W('ἔχουσι(ν)','(zij) hebben','e-CHOE-si(n)'),
+  W('φέρουσι(ν)','1. (zij) dragen  2. (zij) brengen','fe-ROE-si(n)'),
+  W('ποιοῦσι(ν)','1. (zij) doen  2. (zij) maken','poj-OE-si(n)','Poëzie: iets maken.'),
+  W('βαίνουσι(ν)','(zij) gaan','baj-NOE-si(n)'),
+  W('ὁ δεσπότης','heerser, meester','ho DES-po-tès','Despoot: een heerser die alles bepaalt.'),
+  W('φεύγουσι(ν)','(zij) vluchten (voor) (+ acc.)','fui-GOE-si(n)'),
+  W('λαμβάνουσι(ν)','(zij) nemen, pakken (vast)','lam-ba-NOE-si(n)'),
+  W('οἰκεῖ','(hij, zij, het) woont, bewoont','OJ-kei','Economie komt van οἶκος: huis.'),
+  W('φέρει','1. (hij, zij, het) draagt  2. brengt','FE-rei'),
+  W('ἡ μάχη','gevecht, strijd','hè MA-chè'),
+  W('οὐ, οὐκ, οὐχ','niet','oe, oek, oech','οὐ vóór een medeklinker, οὐκ vóór een klinker, οὐχ vóór een spiritus asper.'),
+  W('οὕτως, οὕτω','zo, op die manier','HOE-toos, HOE-too'),
+  W('ὁ φόβος','angst, vrees','ho FO-bos','Fobie: angst voor iets.'),
+  W('οἰκοῦσι(ν)','(zij) wonen, bewonen','oj-KOE-si(n)'),
+  W('ποιεῖ','1. (hij, zij, het) doet  2. maakt','POJ-ei'),
+  W('τὸ θηρίον (mv. τὰ θηρία)','wild dier, beest','to TÈ-ri-on (ta TÈ-ri-a)'),
+  W('τοῦτο','dit, dat (nom. + acc. onz.)','TOE-to'),
+  W('φεύγει (+ acc.)','(hij, zij, het) vlucht (voor)','FUI-gei')];
+['letters','klanken','tekens'].forEach(s=>FC[s].forEach((k,i)=>{k.id=s[0]+i;k.set=s;}));
+['les2','les3'].forEach(s=>FC[s].forEach((k,i)=>{k.id=s+'-'+i;k.set=s;}));
+// de zeven groepjes van het kaartje van mama: ΑΒΓΔ · ΕΖΗΘ · ΙΚΛ · ΜΝΞΟ · ΠΡΣΤ · ΥΦΧ · ΨΩ
+const GROEP=[1,1,1,1,2,2,2,2,3,3,3,4,4,4,4,5,5,5,5,6,6,6,7,7];
+FC.letters.forEach((k,i)=>{k.groep=GROEP[i];});
+let fcGroep=0;
+const SETNAAM={letters:'Letters',klanken:'Klinkers en tweeklanken',tekens:'Spiritus, accenten, leestekens',les2:'Woorden les 2',les3:'Woorden les 3'};
+
+function kaartVan(k){ const e=S.kEdits[k.id]; return e?{...k,...e,aangepast:true}:k; }
+function eigenKaarten(){ return S.kEigen.map(x=>({id:'e-'+x.id,docId:x.id,set:x.set||'letters',v:x.v||'',a:x.a||'',tip:x.tip||'',u:x.u||'',eigen:true})); }
+function alleKaarten(){ return FC.letters.concat(FC.klanken,FC.tekens,FC.les2,FC.les3).map(kaartVan).concat(eigenKaarten()); }
+function isLastig(id){ const s=S.kStats[id]; return !!s&&s.fout>0&&(s.laatst==='fout'||s.fout>=s.goed); }
+function kaartenVoor(set){
+  const all=alleKaarten();
+  if(set==='alles') return all;
+  if(set==='lastig') return all.filter(k=>isLastig(k.id));
+  if(set==='letters'&&fcGroep>0) return all.filter(k=>k.set==='letters'&&k.groep===fcGroep);
+  return all.filter(k=>k.set===set);
+}
+const isVraag=k=>!/^les/.test(k.set)&&k.v.length>14;
+
+let fcSet='letters', fcStapel=[], fcFout=[], fcKaart=null, fcOm=false, fcDraai=false, fcRonde=1, fcTip=false, fcPaneel=null;
+const schud=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function fcStart(){ fcStapel=schud(kaartenVoor(fcSet).map(k=>k.id)); fcFout=[]; fcRonde=1; sluitPaneel(); fcVolgende(); }
+function huidig(){ return fcKaart?alleKaarten().find(k=>k.id===fcKaart):null; }
+function fcVolgende(){
+  fcDraai=false; fcTip=false; sluitPaneel();
+  if(!fcStapel.length){
+    if(fcFout.length){ fcStapel=schud(fcFout); fcFout=[]; fcRonde++; }
+    else { fcKaart=null; fcToon(); return; }
+  }
+  fcKaart=fcStapel.shift(); fcToon();
+}
+function fcToon(){
+  const k=huidig();
+  const lastig=alleKaarten().filter(x=>isLastig(x.id)).length;
+  $('fcLastigBtn').textContent='Mijn lastige kaarten ('+lastig+')';
+  $('fcMini').style.visibility=k?'visible':'hidden';
+  $('fcbHulp').hidden=S.readOnly; $('fcbEdit').hidden=S.readOnly; $('fcNieuw').hidden=S.readOnly;
+  if(!k){
+    $('fcVoor').className='fcv lang';
+    $('fcVoor').textContent=fcSet==='lastig'&&!kaartenVoor('lastig').length?'Geen lastige kaarten':'Alles goed!';
+    $('fcTip').hidden=true; $('fcAchter').className='fca hint';
+    $('fcAchter').textContent=fcSet==='lastig'&&!kaartenVoor('lastig').length?'Kaarten die je fout hebt, komen hier vanzelf.':'Klaar in '+fcRonde+' rondje(s). Tik op "Ik wist het" om opnieuw te beginnen.';
+    $('fcInfo').textContent=''; return;
+  }
+  const om=fcOm&&!isVraag(k);
+  const voor=om?k.a:k.v, achter=om?k.v:k.a;
+  $('fcVoor').className='fcv'+((om||isVraag(k))?' lang':''); $('fcVoor').textContent=voor;
+  $('fcTip').hidden=!fcTip; $('fcTip').textContent=k.tip?'Tip: '+k.tip:'Nog geen ezelsbruggetje. Bedenk er zelf een via Aanpassen.';
+  if(fcDraai){ $('fcAchter').className='fca'; $('fcAchter').innerHTML=(om?'<span class="g">'+esc(achter)+'<\/span>':esc(achter))+(k.uit?'<div class="meta" style="margin-top:6px">Uitspraak: <b>'+esc(k.uit)+'<\/b><\/div>':''); }
+  else { $('fcAchter').className='fca hint'; $('fcAchter').textContent='Tik om te draaien'; }
+  $('fcbTip').setAttribute('aria-pressed',fcTip);
+  const n=S.notes['fc-'+k.id]; $('fcbHulp').className=n&&n.hulp?'on':''; $('fcbHulp').textContent=n&&n.hulp?'Hulp gevraagd':'Hulp';
+  $('fcInfo').textContent=(fcSet==='alles'||fcSet==='lastig'?SETNAAM[k.set]+' · ':'')+(fcSet==='letters'&&fcGroep?'Groepje '+fcGroep+' · ':'')+'Rondje '+fcRonde+' · nog '+(fcStapel.length+1)+' · opnieuw: '+fcFout.length+(k.eigen?' · eigen kaart':k.aangepast?' · aangepast':'');
+}
+async function telAntwoord(id,goed){
+  const s={...(S.kStats[id]||{fout:0,goed:0})};
+  if(goed) s.goed=(s.goed||0)+1; else s.fout=(s.fout||0)+1;
+  s.laatst=goed?'goed':'fout';
+  await mapSet('kaartstats',id,s);
+}
+$('fcCard').onclick=()=>{ if(!fcKaart) return; fcDraai=!fcDraai; fcToon(); };
+$('fcCard').onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('fcCard').onclick(); } };
+$('fcJa').onclick=()=>{ if(!fcKaart){ fcStart(); return; } telAntwoord(fcKaart,true); fcVolgende(); };
+$('fcNee').onclick=()=>{ if(fcKaart){ fcFout.push(fcKaart); telAntwoord(fcKaart,false); } fcVolgende(); };
+$('fcOm').onchange=e=>{ fcOm=e.target.checked; fcDraai=false; fcToon(); };
+document.querySelectorAll('#fcChips button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#fcChips button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  fcSet=b.dataset.set; $('fcGroepen').hidden=fcSet!=='letters'; fcStart();
+});
+document.querySelectorAll('#fcGroepen button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#fcGroepen button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  fcGroep=+b.dataset.groep; fcStart();
+});
+$('fcbTip').onclick=()=>{ if(!fcKaart) return; fcTip=!fcTip; fcToon(); };
+
+// paneel onder de kaart: uitleg, hulp, aanpassen, nieuwe kaart, Vraag Claude
+function sluitPaneel(){ fcPaneel=null; $('fcPanel').hidden=true; $('fcPanel').innerHTML=''; }
+function openPaneel(soort,html){ fcPaneel=soort; $('fcPanel').innerHTML=html; $('fcPanel').hidden=false; }
+$('fcbUitleg').onclick=()=>{
+  const k=huidig(); if(!k) return; if(fcPaneel==='uitleg') return sluitPaneel();
+  openPaneel('uitleg',`<b>Uitleg<\/b><div>${k.u?esc(k.u):'Hier staat nog geen extra uitleg. Gebruik "Vraag Claude", of zet zelf uitleg erbij via Aanpassen.'}<\/div><div class="row"><button data-fc="sluit">Sluiten<\/button><\/div>`);
+};
+$('fcbHulp').onclick=()=>{
+  const k=huidig(); if(!k) return; if(fcPaneel==='hulp') return sluitPaneel();
+  const n=S.notes['fc-'+k.id];
+  openPaneel('hulp',`<b>Hulp vragen bij deze kaart<\/b>
+    <div class="radios"><label for="fhMama"><input type="radio" name="fhVoor" id="fhMama" value="mama" ${!n||n.voor!=='docent'?'checked':''}> Aan mama<\/label><label for="fhDoc"><input type="radio" name="fhVoor" id="fhDoc" value="docent" ${n&&n.voor==='docent'?'checked':''}> Aan de docent<\/label><\/div>
+    <label class="field" for="fhTxt"><span>Wat snap je niet?<\/span><textarea id="fhTxt">${esc(n?n.tekst:'')}<\/textarea><\/label>
+    <div class="row"><button class="prim" data-fc="hulpsave">Hulpvraag opslaan<\/button>${n&&n.hulp?'<button data-fc="hulpok">Hulp is gelukt<\/button>':''}<button data-fc="sluit">Annuleren<\/button><\/div>`);
+  $('fhTxt').focus();
+};
+function editForm(k,nieuw){
+  const sets=Object.entries(SETNAAM).map(([s,nm])=>`<option value="${s}" ${(k?k.set:(fcSet in SETNAAM?fcSet:'letters'))===s?'selected':''}>${esc(nm)}<\/option>`).join('');
+  return `<b>${nieuw?'Eigen kaart toevoegen':'Kaart aanpassen'}<\/b>
+    ${nieuw||(k&&k.eigen)?`<label class="field" for="feSet"><span>Bij welk onderdeel?<\/span><select id="feSet">${sets}<\/select><\/label>`:''}
+    <label class="field" for="feV"><span>Voorkant<\/span><input type="text" id="feV" value="${esc(k?k.v:'')}"><\/label>
+    <label class="field" for="feA"><span>Achterkant (antwoord)<\/span><input type="text" id="feA" value="${esc(k?k.a:'')}"><\/label>
+    <label class="field" for="feT"><span>Ezelsbruggetje (tip)<\/span><textarea id="feT">${esc(k?k.tip:'')}<\/textarea><\/label>
+    <label class="field" for="feU"><span>Uitleg<\/span><textarea id="feU">${esc(k?k.u:'')}<\/textarea><\/label>
+    <div class="row"><button class="prim" data-fc="${nieuw?'nieuwsave':'editsave'}">Opslaan<\/button><button data-fc="sluit">Annuleren<\/button><\/div>
+    ${k&&k.aangepast?'<button class="linkbtn" data-fc="origineel">Terug naar de oorspronkelijke kaart<\/button>':''}
+    ${k&&k.eigen?'<button class="linkbtn" data-fc="delask">Deze eigen kaart verwijderen<\/button><div id="feDel"><\/div>':''}`;
+}
+$('fcbEdit').onclick=()=>{ const k=huidig(); if(!k) return; if(fcPaneel==='edit') return sluitPaneel(); openPaneel('edit',editForm(k,false)); };
+$('fcNieuw').onclick=()=>{ if(fcPaneel==='nieuw') return sluitPaneel(); openPaneel('nieuw',editForm(null,true)); $('feV').focus(); };
+function vraagKaart(k){
+  return ['Mijn kind ('+KIND.niveau+') oefent Grieks en ik wil helpen.','Vak: Grieks.',(/^les/.test(k.set)?'Ik leer de Griekse woorden van '+SETNAAM[k.set].toLowerCase().replace('woorden ','')+' (opdrachtenboek p.200)':'Ik oefen het Griekse alfabet en de bijzonderheden ervan (tekstboek p.20–22)')+' voor mijn proefwerk op '+kort('2026-11-05')+'.',
+    'Kaart: "'+k.v+'". Antwoord: "'+k.a+'".', k.tip?'Ezelsbruggetje: "'+k.tip+'".':'',
+    'Leg uit waarom het zo is en geef een paar voorbeelden om samen te oefenen.'].filter(Boolean).join(' ');
+}
+$('fcbClaude').onclick=()=>{
+  const k=huidig(); if(!k) return;
+  const tx=vraagKaart(k);
+  $('fcbClaude').href=claudeUrl(tx);
+  kopieer(tx).then(ok=>toast(ok?'Vraag gekopieerd. Plak hem in Claude.':'Kopiëren lukte niet. Selecteer de tekst onder de kaart.'));
+  openPaneel('claude',`<span class="meta">Claude opent met deze vraag al ingevuld. Staat hij er niet? Hij is ook gekopieerd: plak hem in het nieuwe gesprek.<\/span><textarea readonly id="fcClaudeTxt">${esc(tx)}<\/textarea><div class="row"><button data-fc="claudecopy">Opnieuw kopiëren<\/button><button data-fc="sluit">Sluiten<\/button><\/div>`);
+};
+$('fcPanel').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-fc]'); if(!b) return; e.preventDefault();
+  const act=b.dataset.fc, k=huidig();
+  if(act==='sluit') return sluitPaneel();
+  if(act==='claudecopy'){ kopieer($('fcClaudeTxt').value).then(ok=>{ toast(ok?'Vraag gekopieerd':'Kopiëren lukte niet. Selecteer de tekst.'); if(!ok){$('fcClaudeTxt').focus();$('fcClaudeTxt').select();} }); return; }
+  if(act==='hulpsave'&&k){
+    const voor=document.querySelector('input[name=fhVoor]:checked').value;
+    await setNote('fc-'+k.id,$('fhTxt').value,true,'Grieks kaart: '+k.v+' → '+k.a,voor);
+    hulpVerstuurd(); sluitPaneel(); fcToon(); return;
+  }
+  if(act==='hulpok'&&k){ const n=S.notes['fc-'+k.id]||{}; await setNote('fc-'+k.id,n.tekst,false,n.label,n.voor); toast('Fijn, hulp is gelukt'); sluitPaneel(); fcToon(); return; }
+  const lees=()=>({v:$('feV').value.trim(),a:$('feA').value.trim(),tip:$('feT').value.trim(),u:$('feU').value.trim()});
+  if(act==='editsave'&&k){
+    const d=lees(); if(!d.v||!d.a){ toast('Vul een voorkant en een achterkant in.'); return; }
+    if(k.eigen){ await listUpdate('kaarten',k.docId,{...d,set:$('feSet').value}); }
+    else { await mapSet('kaartedits',k.id,d); }
+    toast('Kaart opgeslagen'); sluitPaneel(); fcToon(); return;
+  }
+  if(act==='origineel'&&k){ await mapSet('kaartedits',k.id,null); toast('Oorspronkelijke kaart terug'); sluitPaneel(); fcToon(); return; }
+  if(act==='nieuwsave'){
+    const d=lees(); if(!d.v||!d.a){ toast('Vul een voorkant en een achterkant in.'); return; }
+    const ok=await listAdd('kaarten',{...d,set:$('feSet').value,t:Date.now()});
+    if(ok){ toast('Eigen kaart toegevoegd'); sluitPaneel(); }
+    return;
+  }
+  if(act==='delask'){ $('feDel').innerHTML='<div class="del"><span class="meta">Weet je het zeker?<\/span><button class="ja" data-fc="delyes">Ja, verwijderen<\/button><button data-fc="delno">Nee<\/button><\/div>'; return; }
+  if(act==='delno'){ $('feDel').innerHTML=''; return; }
+  if(act==='delyes'&&k&&k.eigen){ await listDel('kaarten',k.docId); toast('Kaart verwijderd'); sluitPaneel(); fcVolgende(); return; }
+});
+function fcVerversen(){ // na nieuwe gegevens: huidige kaart opnieuw tonen, niet schudden
+  if(fcKaart&&!alleKaarten().some(k=>k.id===fcKaart)) fcVolgende(); else fcToon();
+}
+fcStart();
+
+// ---------- studiewijzers per vak (uit de studiewijzers in Drive, aangevuld met Magister) ----------
+const DRIVE='https://drive.google.com/file/d/';
+const SW=SP.inhoud.sw||[];
+const SCHOOL=SP.inhoud.school||[];
+let swVak=null;
+try{ swVak=localStorage.getItem('tw-swvak'); }catch(e){}
+if(SW.length && !SW.some(s=>s.vak===swVak)) swVak=SW[0].vak;
+function renderSW(){
+  if(!SW.length) return;
+  const t=vandaag();
+  $('swChips').innerHTML=SW.map(s=>`<button data-swvak="${esc(s.vak)}" aria-pressed="${s.vak===swVak}">${esc(s.vak)}<\/button>`).join('');
+  const s=SW.find(x=>x.vak===swVak);
+  const komend=s.toetsen.filter(x=>x[0]>=t), voorbij=s.toetsen.filter(x=>x[0]<t);
+  $('swVak').innerHTML=`
+    <div class="swhead"><h2>${esc(s.vak)}<\/h2>${s.pdf?`<a class="claudelink sm" href="${DRIVE+s.pdf}/view" target="_blank" rel="noopener">Studiewijzer openen<\/a>`:''}<\/div>
+    <p class="meta">${esc(s.over)}<\/p>
+    <h3>Toetsen en deadlines<\/h3>
+    ${komend.length?`<div class="tw"><table><thead><tr><th>Wanneer<\/th><th>Wat<\/th><\/tr><\/thead><tbody>${komend.map(x=>`<tr><td>${esc(x[1])}<\/td><td>${esc(x[2])}<\/td><\/tr>`).join('')}<\/tbody><\/table><\/div>`:'<p class="meta">Geen toetsen meer in deze studiewijzer.<\/p>'}
+    ${voorbij.length?`<p class="meta">Al geweest: ${voorbij.map(x=>esc(x[1])+' ('+esc(x[2].split(':')[0])+')').join(' · ')}<\/p>`:''}
+    ${s.ritme.length?`<h3>Weekplanning<\/h3><div class="tw"><table><thead><tr><th>Week<\/th><th>Stof en huiswerk<\/th><\/tr><\/thead><tbody>${s.ritme.map(x=>`<tr><td>${esc(x[0])}<\/td><td>${esc(x[1])}<\/td><\/tr>`).join('')}<\/tbody><\/table><\/div>`:''}
+    ${s.letop.length?`<h3>Let op<\/h3><ul>${s.letop.map(x=>`<li>${esc(x)}<\/li>`).join('')}<\/ul>`:''}`;
+}
+$('swChips').addEventListener('click',e=>{ const b=e.target.closest('button[data-swvak]'); if(!b) return; swVak=b.dataset.swvak; try{localStorage.setItem('tw-swvak',swVak)}catch(e){} renderSW(); });
+$('swSchool').innerHTML=SCHOOL.map(x=>`<span class="d">${esc(x[0])}<\/span><span>${esc(x[1])}<\/span>`).join('');
+renderSW();
+
+// tabs
+function zetTab(t){
+  $('tabPlanner').hidden=t!=='planner'; $('tabSw').hidden=t!=='sw';
+  $('tbPlanner').setAttribute('aria-pressed',t==='planner'); $('tbSw').setAttribute('aria-pressed',t==='sw');
+  try{localStorage.setItem('tw-tab',t)}catch(e){}
+}
+$('tbPlanner').onclick=()=>zetTab('planner'); $('tbSw').onclick=()=>zetTab('sw');
+let startTab='planner'; try{ startTab=localStorage.getItem('tw-tab')||'planner'; }catch(e){}
+zetTab(SW.length&&startTab==='sw'?'sw':'planner');
+
+// ---------- tekstgrootte en thema ----------
+let fs=18; try{fs=+localStorage.getItem('tw-fs')||18}catch(e){}
+const setFs=v=>{fs=Math.min(26,Math.max(17,v));document.documentElement.style.setProperty('--fs',fs+'px');try{localStorage.setItem('tw-fs',fs)}catch(e){}};
+$('fsMin').onclick=()=>setFs(fs-1); $('fsPlus').onclick=()=>setFs(fs+1); setFs(fs);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'};
+
+// ---------- onderdelen die per kind wel of niet bestaan ----------
+{ const R=SP.inhoud.rooster;
+  if(R){ $('rooster').innerHTML=`<h2>${esc(R.titel)}<\/h2><div class="rgrid">${R.kop.map(k=>`<span class="h">${esc(k)}<\/span>`).join('')}${R.rijen.map(rij=>rij.map((c,i)=>`<span${i?'':' class="d"'}>${esc(c)}<\/span>`).join('')).join('')}<\/div>${R.note?`<div class="note">${esc(R.note)}<\/div>`:''}`; $('rooster').hidden=false; }
+  const C=SP.inhoud.checks||[];
+  if(C.length){ $('checks').innerHTML=`<h2>Even navragen of checken<\/h2><ul>${C.map(c=>`<li>${esc(c)}<\/li>`).join('')}<\/ul>`; $('checks').hidden=false; }
+  $('tabsNav').hidden=!SW.length;
+  $('oefenen').hidden=!SP.inhoud.grieks;
+}
+
+// ---------- kop en wisselen tussen kinderen ----------
+$('kop').innerHTML=`Studieplanner ${esc(KIND.naam)}<small>${esc(KIND.kop)}<\/small>`;
+if(SP.wissel && SP.wissel.length>1){
+  $('wissel').innerHTML=SP.wissel.map(w=>`<a href="${esc(location.pathname+'?code='+encodeURIComponent(w.code))}" ${w.kind===SP.kind?'aria-current="page"':''}>${esc(w.naam)}<\/a>`).join('');
+  $('wissel').hidden=false;
+}
+
+// ---------- start ----------
+loadLocal(); render();
+(async()=>{
+  let db=null;
+  try{ db = window.claude && window.claude.use ? await window.claude.use('db') : null; }catch(e){ db=null; }
+  if(!db) return;
+  S.db=db; S.mode='db'; S.done={}; S.extra=[]; S.notes={}; S.kEdits={}; S.kEigen=[]; S.kStats={}; S.links={}; opnieuwTonen();
+  const fout=()=>{ S.mode='local'; loadLocal(); render(); };
+  db.collection('vinkjes').onSnapshot(snap=>{ const d={}; snap.docs.forEach(x=>{d[x.id]=true}); S.done=d; render(); }, fout);
+  db.collection('extra').onSnapshot(snap=>{ S.extra=snap.docs.map(x=>({...x.data(),id:x.id})); render(); }, fout);
+  db.collection('notities').onSnapshot(snap=>{ const n={}; snap.docs.forEach(x=>{n[x.id]=x.data()}); S.notes=n; opnieuwTonen(); }, fout);
+  for(const [coll,f] of Object.entries(MAPS)){
+    db.collection(coll).onSnapshot(snap=>{ const m={}; snap.docs.forEach(x=>{m[x.id]=x.data()}); S[f]=m; opnieuwTonen(); }, fout);
+  }
+  db.collection('kaarten').onSnapshot(snap=>{ S.kEigen=snap.docs.map(x=>({...x.data(),id:x.id})); opnieuwTonen(); }, fout);
+  try{
+    const user=await window.claude.use('user');
+    if(user && user.can){ const w=await user.can('data.write'); if(w===false){ S.readOnly=true; render(); } }
+  }catch(e){}
+})();
+</script>
+<script>
+// ---------- opstarten: profiel ophalen (of uit de vorige keer), dan de planner starten ----------
+(function(){
+  const sleutel='sp-boot-'+SP_CODE;
+  const melding=t=>{ document.querySelector('.wrap').innerHTML=`<p style="font-size:1.1em;padding:24px 0">${t}<\/p>`; };
+  let gestart=false;
+  function start(sp){
+    if(gestart) return; gestart=true;
+    window.SP=sp;
+    const r=document.documentElement; r.dataset.kind=sp.kind; r.dataset.rol=sp.rol;
+    const th=sp.inhoud&&sp.inhoud.profiel&&sp.inhoud.profiel.thema; if(th) r.dataset.thema=th; else delete r.dataset.thema;
+    const p=sp.inhoud&&sp.inhoud.profiel; if(p&&p.naam) document.title='Studieplanner '+p.naam;
+    const app=document.createElement('script'); app.textContent=document.getElementById('app').textContent; document.body.appendChild(app);
+    window.spStartSync();
+  }
+  if(!SP_CODE){ melding('Deze link klopt niet. Vraag mama om de juiste link.'); return; }
+  let cache=null; try{ cache=JSON.parse(localStorage.getItem(sleutel)||'null'); }catch(e){}
+  if(cache) start(cache);   // meteen tonen, ook offline
+  spApi({boot:true}).then(sp=>{
+    try{ localStorage.setItem(sleutel,JSON.stringify(sp)); }catch(e){}
+    if(!gestart) start(sp);
+    else if(JSON.stringify(sp)!==JSON.stringify(cache)) location.reload();   // planning op de server gewijzigd
+  }).catch(err=>{
+    if(gestart) return;
+    melding(String(err&&err.message).indexOf('Geen toegang')>=0?'Deze link klopt niet. Vraag mama om de juiste link.':'Geen verbinding. Probeer het zo nog eens.');
+  });
+})();
+</script>
+
+</body></html>
