@@ -9,10 +9,13 @@ window.SP_CODE=new URLSearchParams(location.search).get('code')||'';
 try{ const c=JSON.parse(localStorage.getItem('sp-boot-'+SP_CODE)||'null');
   if(c){ const r=document.documentElement; r.dataset.kind=c.kind; r.dataset.rol=c.rol; if(c.inhoud&&c.inhoud.profiel&&c.inhoud.profiel.thema) r.dataset.thema=c.inhoud.profiel.thema; } }catch(e){}
 // één verzoek naar de opslag: zonder cookies, dus los van Google-accounts en ouderlijk toezicht
+// bij een haperende verbinding automatisch opnieuw proberen (na 1, 3 en 6 seconden)
 window.spApi=function(body){
-  return fetch(SP_API,{method:'POST',body:JSON.stringify(Object.assign({code:SP_CODE},body)),credentials:'omit',redirect:'follow'})
+  const een=()=>fetch(SP_API,{method:'POST',body:JSON.stringify(Object.assign({code:SP_CODE},body)),credentials:'omit',redirect:'follow'})
     .then(r=>{ if(!r.ok) throw new Error('net'); return r.json(); })
     .then(j=>{ if(j&&j.fout) throw new Error(j.fout); return j; });
+  const wacht=ms=>new Promise(r=>setTimeout(r,ms));
+  return [1000,3000,6000].reduce((p,ms)=>p.catch(e=>{ if(String(e&&e.message).indexOf('Geen toegang')>=0) throw e; return wacht(ms).then(een); }), een());
 };
 </script>
 <meta name="claude:viewport-fit-sides" content="cover">
