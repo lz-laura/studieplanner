@@ -1,6 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Studieplanner</title>
 <meta name="robots" content="noindex, nofollow">
+<meta name="sp-versie" content="2026-10-25c">
 <script>
 // opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
 window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
@@ -1586,6 +1587,11 @@ loadLocal(); render();
   if(!SP_CODE){ melding('Deze link klopt niet. Vraag mama om de juiste link.'); return; }
   let cache=null; try{ cache=JSON.parse(localStorage.getItem(sleutel)||'null'); }catch(e){}
   if(cache) start(cache);   // meteen tonen, ook offline
+  // nieuwe versie van de pagina? Dan één keer verversen (browsers bewaren de oude tot 10 min)
+  try{ const v=(document.querySelector('meta[name=sp-versie]')||{}).content||'';
+    fetch(location.href,{cache:'reload'}).then(r=>r.text()).then(t=>{ const m=t.match(/name="sp-versie" content="([^"]+)"/);
+      if(m&&v&&m[1]!==v&&sessionStorage.getItem('sp-ververst')!==m[1]){ sessionStorage.setItem('sp-ververst',m[1]); location.reload(); } }).catch(()=>{});
+  }catch(e){}
   spApi({boot:true}).then(sp=>{
     try{ localStorage.setItem(sleutel,JSON.stringify(sp)); }catch(e){}
     if(!gestart) start(sp);
