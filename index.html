@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Studieplanner</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="sp-versie" content="2026-10-25c">
+<meta name="sp-versie" content="2026-10-25d">
 <script>
 // opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
 window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
@@ -167,7 +167,7 @@ details.alldone summary .pc{color:var(--ok)}
 .checks ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
 .note{font-size:.8em;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
-.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
 .tabs button{min-height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05em}
 .tabs button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
 .tabpane{display:flex;flex-direction:column;gap:20px}
@@ -252,6 +252,31 @@ details.alldone summary .pc{color:var(--ok)}
 .wissel{display:flex;gap:8px;flex-wrap:wrap}
 .wissel a{min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:22px;border:2px solid var(--line);background:var(--card);color:var(--ink);font-weight:700;text-decoration:none}
 .wissel a[aria-current="page"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
+/* oefenen: meerkeuzevragen en spiekbriefjes */
+.oefset > .inner, .obriefbox > .inner{display:flex;flex-direction:column;gap:12px}
+.ocnt{font-weight:400;opacity:.8;font-variant-numeric:tabular-nums}
+.obriefbox{background:var(--paper)}
+.obrief{display:flex;flex-direction:column;gap:6px}
+.obrief h4{margin:0;font-family:var(--display);font-size:1em}
+.obrief p,.obrief ul{margin:0}
+.obrief ul{padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.obrief mark,.oq mark,.ofout mark{background:var(--toets-soft);color:var(--ink);padding:0 3px;border-radius:4px;font-weight:700}
+.ovb{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.95em}
+.otip{border-left:4px solid var(--kid);padding-left:12px;font-style:italic}
+.oprog{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.oprog i{display:block;height:100%;background:var(--kid)}
+.oq{font-weight:700;font-size:1.1em;margin:0}
+.oopts{display:flex;flex-direction:column;gap:8px}
+.oopt{min-height:56px;text-align:left;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+.oopt:hover:not(:disabled){border-color:var(--kid)}
+.oopt:disabled{cursor:default}
+.oopt.ok,.ofb.ok{border-color:var(--ok);background:var(--ok-soft)}
+.oopt.no,.ofb.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--card))}
+.ofb{border:2px solid;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.oscore{display:flex;flex-direction:column;gap:4px}
+.oscore .big{font-family:var(--display);font-size:2.4em;font-weight:800;font-variant-numeric:tabular-nums}
+.ofout ul{margin:6px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+:root:not([data-rol="ouder"]) a[data-oclaude]{display:none!important}
 </style>
 
 <div class="wrap">
@@ -273,7 +298,8 @@ details.alldone summary .pc{color:var(--ok)}
   <nav class="tabs" id="tabsNav" aria-label="Onderdelen">
     <button id="tbPlanner" aria-pressed="true">Planner</button>
     <button id="tbMag" aria-pressed="false">Magister</button>
-    <button id="tbSw" aria-pressed="false" hidden>Studiewijzers</button>
+    <button id="tbSw" aria-pressed="false" hidden>Studie&shy;wijzers</button>
+    <button id="tbOef" aria-pressed="false" hidden>Oefenen</button>
   </nav>
 
   <div class="tabpane" id="tabPlanner">
@@ -334,9 +360,37 @@ details.alldone summary .pc{color:var(--ok)}
     <div class="sec" id="toetsen"></div>
   </section>
 
-  <section class="sec" id="oefenen" hidden>
+
+  <section class="sec">
+    <h2>Alle dagen</h2>
+    <div class="sec" id="days"></div>
+  </section>
+
+  <section class="checks" id="checks" hidden></section>
+
+  </div>
+
+  <div class="tabpane" id="tabMag" hidden>
+    <p class="meta">Per schooldag: wat er dan af moet zijn of meegenomen, zoals in Magister. Afvinken hier = afgevinkt in de planner.</p>
+    <section class="zonder" id="magZonder" hidden></section>
+    <div class="sec" id="magDagen"></div>
+  </div>
+
+  <div class="tabpane" id="tabSw" hidden>
+    <section class="rooster">
+      <h2>Schooljaar in het kort</h2>
+      <div class="sgrid" id="swSchool"></div>
+    </section>
+    <div class="chips" role="group" aria-label="Kies een vak" id="swChips"></div>
+    <section class="swcard" id="swVak"></section>
+  </div>
+
+  <div class="tabpane" id="tabOef" hidden>
+  <section class="sec" id="oefenen">
     <h2>Oefenen</h2>
-    <details data-id="oef-gr" id="oefGr">
+    <p class="meta">Uitgewerkte lesstof met oefenvragen, per toets. Fout beantwoord? Die vragen komen terug bij "Lastige vragen".</p>
+    <div class="sec" id="oefSets"></div>
+      <details data-id="oef-gr" id="oefGr" hidden>
       <summary><span class="dn">Grieks · alfabet en woorden</span><span class="pc">TB p.20–22 · OB p.200</span>
       <span class="sub">Flitskaarten: letters, tweeklanken, spiritus, accenten, woorden les 2 en 3 (met uitspraak)</span></summary>
       <div class="inner">
@@ -375,29 +429,6 @@ details.alldone summary .pc{color:var(--ok)}
       </div>
     </details>
   </section>
-
-  <section class="sec">
-    <h2>Alle dagen</h2>
-    <div class="sec" id="days"></div>
-  </section>
-
-  <section class="checks" id="checks" hidden></section>
-
-  </div>
-
-  <div class="tabpane" id="tabMag" hidden>
-    <p class="meta">Per schooldag: wat er dan af moet zijn of meegenomen, zoals in Magister. Afvinken hier = afgevinkt in de planner.</p>
-    <section class="zonder" id="magZonder" hidden></section>
-    <div class="sec" id="magDagen"></div>
-  </div>
-
-  <div class="tabpane" id="tabSw" hidden>
-    <section class="rooster">
-      <h2>Schooljaar in het kort</h2>
-      <div class="sgrid" id="swSchool"></div>
-    </section>
-    <div class="chips" role="group" aria-label="Kies een vak" id="swChips"></div>
-    <section class="swcard" id="swVak"></section>
   </div>
 
   <div class="note" id="opslag"></div>
@@ -523,6 +554,7 @@ function taakVan(key){
   for(const T of alleToetsen()){ const t=stofVan(T).find(x=>x.key===key); if(t) return {vak:T.vak,wat:t.wat}; }
   const n=S.notes[key];
   if(/^fc-/.test(key)) return {vak:'Grieks',wat:n&&n.label?n.label.replace(/^Grieks kaart: /,''):''};
+  if(/^q-/.test(key)){ const set=(SP.inhoud.oefensets||[]).find(x=>key.indexOf('q-'+x.id+'-')===0); return {vak:set?set.vak:'',wat:n&&n.label?n.label.replace(/^[^:]+ oefenvraag: /,''):''}; }
   return {vak:'',wat:n&&n.label||''};
 }
 // Google: vak + (hulpvraag of taak) + uitleg + niveau
@@ -534,6 +566,179 @@ function zoekUrl(key){
 }
 function zoekHtml(key){ return `<a class="zoeklink" href="${esc(zoekUrl(key))}" target="_blank" rel="noopener">🔎 Zoek uitleg<\/a>`; }
 const claudeUrl=tx=>'https://claude.ai/new?q='+encodeURIComponent(tx);
+
+// ---------- Oefenen: uitgewerkte lesstof + meerkeuzevragen per toets (sets komen uit Inhoud.gs) ----------
+// set = {id, vak, titel, toets:'jjjj-mm-dd', bron, blokken:[{id, naam, kort, brief:[...], vragen:[{id,q,o:[goed,fout...],u}], koppel:{...}}]}
+// opmaak in teksten: **vet**, [[gemarkeerd]], {klein grijs}
+const OEF = SP.inhoud.oefensets || [];
+let oefKlaar=false;
+const oefSchud=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const oefMk=s=>esc(s||'').replace(/\*\*(.+?)\*\*/g,'<b>$1<\/b>').replace(/\[\[(.+?)\]\]/g,'<mark>$1<\/mark>').replace(/\{(.+?)\}/g,'<span class="meta">$1<\/span>');
+const oefPlat=s=>String(s||'').replace(/\*\*|\[\[|\]\]|\{|\}/g,'');
+// toets in het overzicht → bijbehorende oefenset (zelfde vak en datum, of vast toets-id)
+function oefVoor(T){ return OEF.find(s=>(s.toetsId&&s.toetsId===T.id)||(s.vak===T.vak&&s.toets===T.d)); }
+function oefKnop(T){ const s=oefVoor(T); return s?`<a class="claudelink" href="#oefenen" data-oef="${esc(s.id)}">Lesstof oefenen<\/a>`:''; }
+
+// alle vragen van een blok, ook de gegenereerde koppelvragen (zin → verband, verband → woord)
+const oefCache={};
+function oefVragen(set,blok){
+  const ck=set.id+'|'+blok.id; if(oefCache[ck]) return oefCache[ck];
+  const pre='q-'+set.id+'-'+blok.id+'-';
+  const uit=(blok.vragen||[]).map(v=>({key:pre+v.id,blok:blok.id,q:v.q,o:v.o,u:v.u||''}));
+  const K=blok.koppel;
+  if(K){
+    (K.items||[]).forEach(it=>uit.push({key:pre+it.id,blok:blok.id,q:K.vraag+'\n'+it.tekst,o:null,goed:it.antw,
+      u:'**'+it.antw+'**.'+(K.woorden&&K.woorden[it.antw]?' Andere signaalwoorden hiervoor: '+K.woorden[it.antw].join(', ')+'.':'')}));
+    if(K.woorden&&K.woordvraag) Object.keys(K.woorden).forEach((v,i)=>uit.push({key:pre+'w'+i,blok:blok.id,q:K.woordvraag.replace('{x}','**'+v+'**'),o:null,woordVoor:v,u:''}));
+  }
+  return oefCache[ck]=uit;
+}
+function oefAlle(set){ return set.blokken.flatMap(b=>oefVragen(set,b)); }
+// antwoordopties pas bij het tonen maken (koppelvragen krijgen elke keer andere foute opties)
+function oefOpties(set,v){
+  if(v.o) return {opts:oefSchud(v.o),goed:v.o[0],u:v.u};
+  const K=set.blokken.find(b=>b.id===v.blok).koppel;
+  if(v.woordVoor){
+    const W=K.woorden, goed=oefSchud(W[v.woordVoor])[0];
+    const fout=oefSchud(Object.keys(W).filter(x=>x!==v.woordVoor)).slice(0,3).map(x=>({w:oefSchud(W[x])[0],v:x}));
+    return {opts:oefSchud([goed,...fout.map(f=>f.w)]),goed,u:`'${goed}' hoort bij ${v.woordVoor}. De andere: ${fout.map(f=>`'${f.w}' = ${f.v}`).join(', ')}.`};
+  }
+  return {opts:oefSchud([v.goed,...oefSchud(K.opties.filter(x=>x!==v.goed)).slice(0,3)]),goed:v.goed,u:v.u};
+}
+const oefGoedGehad=k=>{ const s=S.kStats[k]; return !!s&&s.laatst==='goed'; };
+
+// staat per set: gekozen blok en het rondje
+const OS={};
+function oefBriefHtml(blok){
+  return (blok.brief||[]).map(d=>`<div class="obrief">${d.kop?`<h4>${esc(d.kop)}<\/h4>`:''}
+    ${(d.tekst||[]).map(t=>`<p>${oefMk(t)}<\/p>`).join('')}
+    ${d.lijst?`<ul>${d.lijst.map(t=>`<li>${oefMk(t)}<\/li>`).join('')}<\/ul>`:''}
+    ${d.tabel?`<div class="tw"><table><thead><tr>${d.tabel.kop.map(k=>`<th>${esc(k)}<\/th>`).join('')}<\/tr><\/thead><tbody>${d.tabel.rijen.map(r=>`<tr>${r.map(c=>`<td>${oefMk(c)}<\/td>`).join('')}<\/tr>`).join('')}<\/tbody><\/table><\/div>`:''}
+    ${(d.voorbeeld||[]).map(t=>`<div class="ovb">${oefMk(t)}<\/div>`).join('')}
+    ${d.tip?`<p class="otip">${oefMk(d.tip)}<\/p>`:''}<\/div>`).join('');
+}
+function oefSetHtml(set){
+  const st=OS[set.id];
+  const all=oefAlle(set), gehad=all.filter(v=>oefGoedGehad(v.key)).length, lastig=all.filter(v=>isLastig(v.key)).length;
+  const blok=set.blokken.find(b=>b.id===st.blok);
+  const chips=set.blokken.map(b=>{ const vr=oefVragen(set,b), g=vr.filter(v=>oefGoedGehad(v.key)).length;
+      return `<button data-oblok="${esc(b.id)}" aria-pressed="${st.blok===b.id}">${esc(b.naam)} <span class="ocnt">${g}/${vr.length}<\/span><\/button>`; }).join('')
+    +`<button data-oblok="proef" aria-pressed="${st.blok==='proef'}">Proeftoets<\/button>`
+    +`<button data-oblok="lastig" aria-pressed="${st.blok==='lastig'}">Lastige vragen (${lastig})<\/button>`;
+  return `<details class="oefset" data-id="oef-${esc(set.id)}" id="oef-${esc(set.id)}" ${st.open?'open':''}>
+    <summary><span class="dn">${esc(set.vak)} · ${esc(set.titel)}<\/span><span class="pc">${set.toets?'toets '+esc(kort(set.toets)):''}<\/span>
+    <span class="sub">${set.bron?esc(set.bron)+' · ':''}${gehad} van ${all.length} vragen goed beantwoord<\/span><\/summary>
+    <div class="inner">
+      <div class="chips" role="group" aria-label="Wat wil je oefenen?">${chips}<\/div>
+      ${blok?`<details class="obriefbox" ${st.briefOpen?'open':''} data-obrief="${esc(set.id)}"><summary><span class="dn">Spiekbriefje · ${esc(blok.naam)}<\/span><span class="sub">${esc(blok.kort||'')}<\/span><\/summary><div class="inner">${oefBriefHtml(blok)}<\/div><\/details>`:''}
+      <div class="oquiz" id="oq-${esc(set.id)}">${oefQuizHtml(set)}<\/div>
+    <\/div><\/details>`;
+}
+function oefStart(set,herkans){
+  const st=OS[set.id], all=oefAlle(set);
+  let lijst;
+  if(herkans) lijst=st.fout.map(f=>f.v);
+  else if(st.blok==='proef') lijst=set.blokken.flatMap(b=>oefSchud(oefVragen(set,b)).slice(0,3));
+  else if(st.blok==='lastig') lijst=all.filter(v=>isLastig(v.key));
+  else lijst=oefVragen(set,set.blokken.find(b=>b.id===st.blok));
+  st.lijst=oefSchud(lijst).slice(0,st.blok==='proef'||herkans?99:10);
+  st.n=0; st.goed=0; st.fout=[]; st.herkans=!!herkans; st.keuze=null; st.paneel=null;
+  st.cur=st.lijst.length?oefOpties(set,st.lijst[0]):null;
+}
+function oefQuizHtml(set){
+  const st=OS[set.id];
+  if(!st.lijst.length) return `<p class="meta">${st.blok==='lastig'?'Nog geen lastige vragen. Vragen die je fout hebt, komen hier vanzelf.':'Hier staan nog geen vragen.'}<\/p>`;
+  if(st.n>=st.lijst.length){
+    const tot=st.lijst.length, pct=Math.round(st.goed/tot*100);
+    const msg=pct>=90?'Top, dit zit erin.':pct>=70?'Goed bezig. Nog één rondje en dan zit het.':pct>=50?'Bijna. Lees het spiekbriefje nog een keer en probeer opnieuw.':'Lees eerst het spiekbriefje rustig door, dan nog een keer.';
+    return `<div class="oscore"><span class="big">${st.goed} / ${tot}<\/span><span>${msg}<\/span><\/div>
+      ${st.fout.length?`<div class="ofout"><b>Deze gingen fout<\/b><ul>${st.fout.map(f=>`<li>${oefMk(f.v.q).replace(/\n/g,'<br>')}<br>→ <b>${esc(f.goed)}<\/b><\/li>`).join('')}<\/ul><\/div>`:''}
+      <div class="row">${st.fout.length?`<button class="prim" data-oact="herkans">Foute vragen opnieuw<\/button>`:''}<button ${st.fout.length?'':'class="prim"'} data-oact="opnieuw">Nieuw rondje<\/button><\/div>`;
+  }
+  const v=st.lijst[st.n], c=st.cur, k=st.keuze;
+  const opts=c.opts.map((o,i)=>{ let cls=''; if(k!=null){ if(o===c.goed) cls='ok'; else if(i===k) cls='no'; }
+    return `<button class="oopt ${cls}" data-oopt="${i}" ${k!=null?'disabled':''}>${oefMk(o)}<\/button>`; }).join('');
+  const ok=k!=null&&c.opts[k]===c.goed;
+  const n=S.notes[v.key];
+  return `<div class="meta">${st.herkans?'Foute vragen opnieuw · ':''}Vraag ${st.n+1} van ${st.lijst.length} · ${st.goed} goed${n&&n.hulp?' · hulp gevraagd':''}<\/div>
+    <div class="oprog"><i style="width:${st.n/st.lijst.length*100}%"><\/i><\/div>
+    <p class="oq">${oefMk(v.q).replace(/\n/g,'<br>')}<\/p>
+    <div class="oopts">${opts}<\/div>
+    ${k!=null?`<div class="ofb ${ok?'ok':'no'}"><b>${ok?'Goed!':'Niet goed. Het juiste antwoord: '+esc(c.goed)}<\/b><div>${oefMk(c.u)}<\/div><\/div>
+      <div class="row"><button class="prim" data-oact="volgende">${st.n===st.lijst.length-1?'Bekijk je score':'Volgende vraag'}<\/button><\/div>`:''}
+    <div class="mini"><button data-oact="hulp">Hulp<\/button><a href="https://claude.ai/new" target="_blank" rel="noopener" data-oclaude="${esc(set.id)}">Vraag Claude<\/a><\/div>
+    <div class="fcpanel" ${st.paneel?'':'hidden'}>${st.paneel||''}<\/div>`;
+}
+function oefVraagClaude(set,v,c){
+  const b=set.blokken.find(x=>x.id===v.blok);
+  return ['Mijn kind ('+KIND.niveau+') leert voor een toets '+set.vak+' over '+set.titel+(b?' (onderdeel: '+b.naam+')':'')+' en ik wil helpen.',
+    'Oefenvraag: "'+oefPlat(v.q).replace(/\n/g,' ')+'". Juiste antwoord: "'+oefPlat(c.goed)+'".', c.u?'Uitleg in de app: "'+oefPlat(c.u)+'".':'',
+    'Leg het op een andere, eenvoudige manier uit en geef twee nieuwe oefenvoorbeelden.'].filter(Boolean).join(' ');
+}
+function oefTeken(id){ const set=OEF.find(s=>s.id===id); if(set) $('oq-'+id).innerHTML=oefQuizHtml(set); }
+function renderOef(){
+  if(!OEF.length){ $('oefSets').innerHTML=''; return; }
+  const t=vandaag(), komend=OEF.filter(s=>!s.toets||s.toets>=t), oud=OEF.filter(s=>s.toets&&s.toets<t);
+  OEF.forEach((s,i)=>{ if(!OS[s.id]){ OS[s.id]={blok:s.blokken[0].id,open:komend.length===1&&komend[0]===s,briefOpen:false,lijst:[],fout:[]}; oefStart(s); } });
+  $('oefSets').innerHTML=komend.map(oefSetHtml).join('')
+    +(oud.length?`<details data-id="oef-oud"><summary><span class="dn">Eerder geoefend (${oud.length})<\/span><\/summary><div class="inner">${oud.map(oefSetHtml).join('')}<\/div><\/details>`:'');
+}
+// na nieuwe gegevens alleen de tellers bijwerken; een rondje dat bezig is blijft staan
+function oefVerversen(){
+  OEF.forEach(set=>{ const d=$('oef-'+set.id); if(!d) return;
+    const h=document.createElement('div'); h.innerHTML=oefSetHtml(set);
+    const nw=h.firstElementChild;
+    d.querySelector(':scope > summary .sub').innerHTML=nw.querySelector(':scope > summary .sub').innerHTML;
+    d.querySelector(':scope > .inner > .chips').innerHTML=nw.querySelector(':scope > .inner > .chips').innerHTML; });
+}
+document.getElementById('oefSets').addEventListener('toggle',e=>{
+  const d=e.target; if(d.dataset&&d.dataset.obrief&&OS[d.dataset.obrief]) OS[d.dataset.obrief].briefOpen=d.open;
+  if(d.classList&&d.classList.contains('oefset')){ const id=d.id.replace(/^oef-/,''); if(OS[id]) OS[id].open=d.open; }
+},true);
+document.getElementById('oefSets').addEventListener('click',async e=>{
+  const box=e.target.closest('details.oefset'); if(!box) return;
+  const set=OEF.find(s=>'oef-'+s.id===box.id); if(!set) return;
+  const st=OS[set.id];
+  const bl=e.target.closest('[data-oblok]');
+  if(bl){ st.blok=bl.dataset.oblok; st.briefOpen=false; oefStart(set); const h=document.createElement('div'); h.innerHTML=oefSetHtml(set); box.replaceWith(h.firstElementChild); return; }
+  const op=e.target.closest('[data-oopt]');
+  if(op&&st.keuze==null){
+    st.keuze=+op.dataset.oopt; const v=st.lijst[st.n], goed=st.cur.opts[st.keuze]===st.cur.goed;
+    if(goed) st.goed++; else st.fout.push({v,goed:st.cur.goed});
+    if(isKind()) telAntwoord(v.key,goed);
+    oefTeken(set.id); const nx=box.querySelector('[data-oact="volgende"]'); if(nx) nx.focus({preventScroll:true}); return;
+  }
+  const cl=e.target.closest('a[data-oclaude]');
+  if(cl){ const v=st.lijst[st.n]; if(!v) return; const tx=oefVraagClaude(set,v,st.cur); cl.href=claudeUrl(tx);
+    kopieer(tx).then(ok=>toast(ok?'Claude opent met de vraag. Ook gekopieerd, voor de zekerheid.':'Claude opent met de vraag.')); return; }
+  const a=e.target.closest('[data-oact]'); if(!a) return;
+  const act=a.dataset.oact, v=st.lijst[st.n];
+  if(act==='volgende'){ st.n++; st.keuze=null; st.paneel=null; if(st.n<st.lijst.length) st.cur=oefOpties(set,st.lijst[st.n]); oefTeken(set.id); box.querySelector('.oquiz').scrollIntoView({block:'nearest'}); return; }
+  if(act==='herkans'){ oefStart(set,true); oefTeken(set.id); return; }
+  if(act==='opnieuw'){ oefStart(set); oefTeken(set.id); return; }
+  if(act==='hulp'&&v){
+    if(st.paneel){ st.paneel=null; oefTeken(set.id); return; }
+    const n=S.notes[v.key];
+    st.paneel=`<b>Hulp vragen bij deze vraag<\/b>
+      <div class="radios"><label for="ohMama"><input type="radio" name="ohVoor" id="ohMama" value="mama" ${!n||n.voor!=='docent'?'checked':''}> Aan mama<\/label><label for="ohDoc"><input type="radio" name="ohVoor" id="ohDoc" value="docent" ${n&&n.voor==='docent'?'checked':''}> Aan de docent<\/label><\/div>
+      <label class="field" for="ohTxt"><span>Wat snap je niet?<\/span><textarea id="ohTxt">${esc(n?n.tekst:'')}<\/textarea><\/label>
+      <div class="row"><button class="prim" data-oact="hulpsave">Hulpvraag opslaan<\/button>${n&&n.hulp?'<button data-oact="hulpok">Hulp is gelukt<\/button>':''}<button data-oact="sluit">Annuleren<\/button><\/div>`;
+    oefTeken(set.id); $('ohTxt').focus(); return;
+  }
+  if(act==='sluit'){ st.paneel=null; oefTeken(set.id); return; }
+  if(act==='hulpsave'&&v){
+    const voor=document.querySelector('input[name=ohVoor]:checked').value;
+    await setNote(v.key,$('ohTxt').value,true,set.vak+' oefenvraag: '+oefPlat(v.q).replace(/\n/g,' ').slice(0,160),voor);
+    hulpVerstuurd(); st.paneel=null; oefTeken(set.id); return;
+  }
+  if(act==='hulpok'&&v){ const n=S.notes[v.key]||{}; await setNote(v.key,n.tekst,false,n.label,n.voor); toast('Fijn, hulp is gelukt'); st.paneel=null; oefTeken(set.id); return; }
+});
+// vanuit een toets in het overzicht naar de juiste set springen
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-oef]'); if(!a) return; e.preventDefault();
+  zetTab('oef'); const id=a.dataset.oef, d=$('oef-'+id);
+  if(d){ d.open=true; if(OS[id]) OS[id].open=true; const p=d.parentElement&&d.parentElement.closest('details'); if(p) p.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); }
+});
 
 // toetsen: vaste (uit de server) + ingelezen uit de afsprakenlijst
 function alleToetsen(){
@@ -579,7 +784,7 @@ function magRegel(x){
   if(x.soort==='toets'){
     const T=x.T, st=stofVan(T), af=st.filter(s=>S.done[s.key]).length;
     return `<div class="mtoets"><div><b>${esc(T.vak)}<\/b> · ${esc(T.wat)}${lesuur(T.tijd)?' · '+esc(lesuur(T.tijd)):''}${toetsLabels(T)}
-      <span class="w">${st.length?esc(st.map(s=>s.wat).join(' · ').slice(0,220))+(st.length?` <span class="meta">(${af}/${st.length} geleerd)<\/span>`:''):'Lesstof nog invullen'}<\/span><\/div><\/div>`;
+      <span class="w">${st.length?esc(st.map(s=>s.wat).join(' · ').slice(0,220))+(st.length?` <span class="meta">(${af}/${st.length} geleerd)<\/span>`:''):'Lesstof nog invullen'}<\/span><\/div>${oefVoor(T)?`<div class="row">${oefKnop(T)}<\/div>`:''}<\/div>`;
   }
   const on=!!S.done[x.key], id='m-'+x.key.replace(/[^a-z0-9-]/gi,'_');
   const pl=x.gepland?'gepland '+kort(x.gepland):'';
@@ -610,7 +815,7 @@ const S = {done:{}, extra:[], notes:{}, kEdits:{}, kEigen:[], kStats:{}, links:{
 const LOCAL=Object.fromEntries(Object.entries({done:'done',extra:'extra',notes:'notes',kEdits:'kedits',kEigen:'keigen',kStats:'kstats',links:'links'}).map(([f,k])=>[f,'tw-'+SP.kind+'-'+k]));
 function loadLocal(){ for(const [f,k] of Object.entries(LOCAL)){ try{ const v=localStorage.getItem(k); if(v) S[f]=JSON.parse(v); }catch(e){} } }
 function saveLocal(){ try{ for(const [f,k] of Object.entries(LOCAL)) localStorage.setItem(k,JSON.stringify(S[f])); }catch(e){} }
-function opnieuwTonen(){ render(); if(typeof fcVerversen==='function') fcVerversen(); }
+function opnieuwTonen(){ render(); if(typeof fcVerversen==='function') fcVerversen(); if(oefKlaar) oefVerversen(); }
 
 // algemene opslag: map-collecties (één document per sleutel) en lijst-collecties
 const MAPS={kaartedits:'kEdits',kaartstats:'kStats',links:'links'};
@@ -753,7 +958,8 @@ function deadline(t){
   return T?'Voor de toets op '+kort(T.d):'';
 }
 let sgEdit=null, sgDraft=null;
-function sgHtml(T){
+function sgHtml(T){ return oefKnop(T)+sgHtml0(T); }
+function sgHtml0(T){
   const l=S.links[T.id], url=l&&l.url;
   if(sgEdit===T.id){
     return `<div class="sgedit"><label class="field" for="sgInput"><span>Link naar je StudyGo-lijst (kopieer hem uit StudyGo)<\/span><input type="text" id="sgInput" inputmode="url" value="${esc(sgDraft!=null?sgDraft:(url||''))}" placeholder="https://studygo.com/..."><\/label>
@@ -969,7 +1175,7 @@ function kopieer(tekst){
 }
 document.addEventListener('click',e=>{
   const g=e.target.closest('a[data-goto]');
-  if(g){ e.preventDefault(); const d=$(g.dataset.goto); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } return; }
+  if(g){ e.preventDefault(); const d=$(g.dataset.goto); if(d){ if(d.closest('#tabOef')) zetTab('oef'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } return; }
   const a=e.target.closest('a[data-nclaude]');
   if(a){ // link opent Claude in een nieuw tabblad; tegelijk de vraag kopiëren
     const k=a.dataset.nclaude, tx=vraagVoorClaude(k);
@@ -1487,6 +1693,7 @@ function fcVerversen(){ // na nieuwe gegevens: huidige kaart opnieuw tonen, niet
   if(fcKaart&&!alleKaarten().some(k=>k.id===fcKaart)) fcVolgende(); else fcToon();
 }
 fcStart();
+renderOef(); oefKlaar=true;
 
 // ---------- studiewijzers per vak (uit de studiewijzers in Drive, aangevuld met Magister) ----------
 const DRIVE='https://drive.google.com/file/d/';
@@ -1515,16 +1722,17 @@ $('swSchool').innerHTML=SCHOOL.map(x=>`<span class="d">${esc(x[0])}<\/span><span
 renderSW();
 
 // tabs
+const TABS={planner:['tabPlanner','tbPlanner'],mag:['tabMag','tbMag'],sw:['tabSw','tbSw'],oef:['tabOef','tbOef']};
 function zetTab(t){
-  $('tabPlanner').hidden=t!=='planner'; $('tabSw').hidden=t!=='sw'; $('tabMag').hidden=t!=='mag';
-  $('tbPlanner').setAttribute('aria-pressed',t==='planner'); $('tbSw').setAttribute('aria-pressed',t==='sw'); $('tbMag').setAttribute('aria-pressed',t==='mag');
+  Object.entries(TABS).forEach(([k,[p,b]])=>{ $(p).hidden=k!==t; $(b).setAttribute('aria-pressed',k===t); });
   if(t==='mag') renderMag();
   try{localStorage.setItem('tw-tab-'+SP.kind,t)}catch(e){}
 }
-$('tbPlanner').onclick=()=>zetTab('planner'); $('tbSw').onclick=()=>zetTab('sw'); $('tbMag').onclick=()=>zetTab('mag');
+$('tbPlanner').onclick=()=>zetTab('planner'); $('tbSw').onclick=()=>zetTab('sw'); $('tbMag').onclick=()=>zetTab('mag'); $('tbOef').onclick=()=>zetTab('oef');
 $('signaal').onclick=()=>{ zetTab('planner'); const z=$('zonderDatum'); if(z) z.scrollIntoView({behavior:'smooth',block:'start'}); };
 let startTab='planner'; try{ startTab=localStorage.getItem('tw-tab-'+SP.kind)||'planner'; }catch(e){}
-zetTab(startTab==='sw'&&SW.length?'sw':(startTab==='mag'?'mag':'planner'));
+const heeftOef=!!(SP.inhoud.grieks||OEF.length);
+zetTab(startTab==='sw'&&SW.length?'sw':(startTab==='mag'?'mag':(startTab==='oef'&&heeftOef?'oef':'planner')));
 
 // ---------- tekstgrootte en thema ----------
 let fs=18; try{fs=+localStorage.getItem('tw-fs')||18}catch(e){}
@@ -1538,7 +1746,7 @@ $('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.th
   const C=SP.inhoud.checks||[];
   if(C.length){ $('checks').innerHTML=`<h2>Even navragen of checken<\/h2><ul>${C.map(c=>`<li>${esc(c)}<\/li>`).join('')}<\/ul>`; $('checks').hidden=false; }
   $('tbSw').hidden=!SW.length;
-  $('oefenen').hidden=!SP.inhoud.grieks;
+  $('oefGr').hidden=!SP.inhoud.grieks; $('tbOef').hidden=!heeftOef;
 }
 
 // ---------- kop en wisselen tussen kinderen ----------
