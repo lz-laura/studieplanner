@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Studieplanner</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="sp-versie" content="2026-10-25d">
+<meta name="sp-versie" content="2026-10-25e">
 <script>
 // opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
 window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
@@ -168,7 +168,8 @@ details.alldone summary .pc{color:var(--ok)}
 .note{font-size:.8em;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
 .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
-.tabs button{min-height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05em}
+.tabs button{min-height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05em;padding:0 4px;min-width:0;overflow-wrap:anywhere}
+@media (max-width:420px){.tabs button{font-size:.95em}}
 .tabs button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
 .tabpane{display:flex;flex-direction:column;gap:20px}
 .tabpane[hidden]{display:none}
