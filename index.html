@@ -830,7 +830,7 @@ function render(){
     const did='t-'+T.id;
     return `<details class="toets ${all?'alldone':''}" data-id="${did}" ${openD.includes(did)?'open':''}>
       <summary><span class="dn">${esc(T.vak)} · ${esc(kort(T.d))}${T.tijd!=='les'?' · '+esc(T.tijd):''}<\/span><span class="pc">${all?'✓':af+'/'+st.length}<\/span>
-      <span class="sub">${esc(T.wat)}${T.pta?' <span class="tag pta">PTA<\/span>':''}${T.bron?' <span class="tag mag">Magister<\/span>':''}${T.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}<\/span><\/summary>
+      <span class="sub">${esc(T.wat)}${T.pta?' <span class="tag pta">PTA<\/span>':''}${T.bron==='magister'?' <span class="tag mag">Magister<\/span>':(T.bron==='inhalen'?' <span class="tag wijz">Inhalen<\/span>':'')}${T.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}<\/span><\/summary>
       <div class="inner"><ul class="list">${st.map(stofHtml).join('')}<\/ul>${sgHtml(T)}<\/div><\/details>`;
   }).join('')||'<div class="meta">Geen toetsen meer gepland.<\/div>';
 
