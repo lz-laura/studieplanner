@@ -62,7 +62,7 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
 /* toevoegen */
 .addbtn{min-height:60px;border-radius:16px;border:2px dashed var(--kid);background:var(--card);font-weight:700;font-size:1.05em;color:var(--kid-txt)}
 .panel{background:var(--card);border:2px solid var(--kid);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .seg button{min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--paper);font-weight:700}
 .seg button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -166,7 +166,7 @@ details.alldone summary .pc{color:var(--ok)}
 .checks ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
 .note{font-size:.8em;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:6px}
 .tabs button{min-height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05em}
 .tabs button[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:var(--kid-ink)}
 .tabpane{display:flex;flex-direction:column;gap:20px}
@@ -227,6 +227,22 @@ details.alldone summary .pc{color:var(--ok)}
 .tag.nieuw{color:var(--kid-ink);background:var(--kid);margin:0 0 2px;align-self:flex-start}
 .hulpbox .meta{display:block}
 :root:not([data-rol="ouder"]) [data-ustuur]{display:none!important}
+.mdag{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.mdag.morgen{border:2px solid var(--kid)}
+.mdag h3{font-family:var(--display);font-size:1.1em;margin:0}
+.mdag h3 small{font-family:var(--body);font-weight:400;color:var(--muted);font-size:.8em;margin-left:6px}
+.mtoets{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--toets-soft)}
+.mtoets::before{content:"";flex:none;width:12px;height:12px;border-radius:50%;background:var(--toets);margin-top:.45em}
+.mtoets .w{display:block;font-size:.9em}
+.zonder{background:var(--card);border:2px dashed var(--toets);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.zonder h3{font-size:1em;margin:0}
+.zonder li{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--toets-soft)}
+.zonder ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.zonder .rij{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.zonder .rij input{max-width:200px}
+.zonder button,.mdag button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--toets);background:var(--card);color:var(--toets);font-weight:700;font-size:.85em}
+.signaal{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--toets);background:var(--toets-soft);color:var(--ink);font-weight:700;min-height:52px}
+:root:not([data-rol="ouder"]) .signaal{display:none!important}
 .tag.pta{color:var(--toets);background:var(--toets-soft)}
 .tag.mag{color:var(--muted);background:var(--paper);border:1px solid var(--line)}
 .tag.wijz{color:var(--toets);background:var(--toets-soft)}
@@ -251,9 +267,12 @@ details.alldone summary .pc{color:var(--ok)}
 
   <section class="hulpbox" id="hulp" hidden></section>
 
-  <nav class="tabs" id="tabsNav" aria-label="Onderdelen" hidden>
+  <button class="signaal" id="signaal" hidden></button>
+
+  <nav class="tabs" id="tabsNav" aria-label="Onderdelen">
     <button id="tbPlanner" aria-pressed="true">Planner</button>
-    <button id="tbSw" aria-pressed="false">Studiewijzers</button>
+    <button id="tbMag" aria-pressed="false">Magister</button>
+    <button id="tbSw" aria-pressed="false" hidden>Studiewijzers</button>
   </nav>
 
   <div class="tabpane" id="tabPlanner">
@@ -271,6 +290,7 @@ details.alldone summary .pc{color:var(--ok)}
     <div class="seg" role="group" aria-label="Wat voeg je toe?">
       <button id="segHw" aria-pressed="true">Huiswerk</button>
       <button id="segTs" aria-pressed="false">Toetsstof</button>
+      <button id="segTo" aria-pressed="false">Toets</button>
     </div>
 
     <div id="fHw" class="grid2" style="display:grid">
@@ -288,6 +308,14 @@ details.alldone summary .pc{color:var(--ok)}
       <label class="field" for="tsWat" style="grid-column:1/-1"><span>Wat moet je leren?</span><input type="text" id="tsWat" placeholder="bijv. ook de aantekeningen uit de les"></label>
     </div>
 
+    <div id="fTo" class="grid2" hidden>
+      <label class="field" for="toVak"><span>Vak</span><select id="toVak"></select></label>
+      <label class="field" for="toSoort"><span>Soort</span><select id="toSoort"><option value="toets">Toets</option><option value="inhalen">Inhaaltoets</option><option value="pta">PTA</option></select></label>
+      <label class="field" for="toDatum"><span>Datum (mag leeg als die nog niet bekend is)</span><input type="date" id="toDatum"></label>
+      <label class="field" for="toUur"><span>Lesuur (mag leeg)</span><input type="text" id="toUur" placeholder="bijv. 3"></label>
+      <label class="field" for="toStof" style="grid-column:1/-1"><span>Lesstof (mag later; één onderdeel per regel)</span><textarea id="toStof" rows="3" style="font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px"></textarea></label>
+    </div>
+
     <div class="msg" id="addMsg" hidden></div>
     <div class="row">
       <button class="prim" id="save">Opslaan</button>
@@ -299,8 +327,9 @@ details.alldone summary .pc{color:var(--ok)}
 
   <section class="rooster" id="rooster" hidden></section>
 
-  <section class="sec">
+  <section class="sec" id="toetsenSec">
     <h2>Toetsen en toetsstof</h2>
+    <section class="zonder" id="zonderDatum" hidden></section>
     <div class="sec" id="toetsen"></div>
   </section>
 
@@ -353,6 +382,12 @@ details.alldone summary .pc{color:var(--ok)}
 
   <section class="checks" id="checks" hidden></section>
 
+  </div>
+
+  <div class="tabpane" id="tabMag" hidden>
+    <p class="meta">Per schooldag: wat er dan af moet zijn of meegenomen, zoals in Magister. Afvinken hier = afgevinkt in de planner.</p>
+    <section class="zonder" id="magZonder" hidden></section>
+    <div class="sec" id="magDagen"></div>
   </div>
 
   <div class="tabpane" id="tabSw" hidden>
@@ -505,6 +540,65 @@ function alleToetsen(){
     stof:Array.isArray(x.stof)?x.stof:[],pta:!!x.pta,bron:x.bron||'',gewijzigd:x.gewijzigd||0}));
   return TOETSEN.concat(ing).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
 }
+// toetsen die nog geen datum hebben (bv. inhaaltoets)
+function zonderDatum(){
+  return S.extra.filter(x=>x.soort==='toets'&&!x.verborgen&&!x.d).map(x=>({id:x.id,vak:x.vak,wat:x.wat||'Toets',d:'',tijd:x.tijd||'les',
+    stof:Array.isArray(x.stof)?x.stof:[],pta:!!x.pta,bron:x.bron||'',gewijzigd:x.gewijzigd||0})).sort((a,b)=>(a.vak||'').localeCompare(b.vak||'','nl'));
+}
+async function updExtra(id,data){
+  if(S.readOnly) return;
+  const x=S.extra.find(e=>e.id===id); if(x) Object.assign(x,data); render();
+  if(S.mode==='db'){ try{ await S.db.collection('extra').doc(id).update(data); }catch(e){ writeFail(e); } } else saveLocal();
+}
+const lesuur=t=>!t||t==='les'?'':(/^\d+$/.test(t)?t+'e uur':t);
+const toetsLabels=T=>`${T.pta?' <span class="tag pta">PTA<\/span>':''}${T.bron==='magister'?' <span class="tag mag">Magister<\/span>':(T.bron==='inhalen'?' <span class="tag wijz">Inhalen<\/span>':'')}${T.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}`;
+let datumEdit=null;
+function zonderHtml(){
+  const z=zonderDatum(); if(!z.length) return '';
+  return `<h3>⚠ Toetsen zonder datum (${z.length})<\/h3><ul>${z.map(T=>{
+    const st=stofVan(T);
+    return `<li><div><b>${esc(T.vak)}<\/b> · ${esc(T.wat)}${toetsLabels(T)}<\/div>
+      <div class="meta">${st.length?st.map(x=>esc(x.wat)).join(' · '):'Lesstof nog invullen'}<\/div>
+      ${S.readOnly?'':(datumEdit===T.id
+        ?`<div class="rij"><input type="date" id="zdDatum" aria-label="Datum"><input type="text" id="zdUur" placeholder="lesuur" aria-label="Lesuur" style="max-width:110px"><button data-zdsave="${esc(T.id)}">Opslaan<\/button><button data-zdcancel="1">Annuleren<\/button><\/div>`
+        :`<div class="rij"><button data-zdedit="${esc(T.id)}">Datum invullen<\/button><button data-zdstof="${esc(T.id)}">Lesstof toevoegen<\/button><\/div>`)}<\/li>`;
+  }).join('')}<\/ul>`;
+}
+
+// ---------- Magister-overzicht: per inleverdag ----------
+function magItems(){
+  const per={};
+  const zet=(d,x)=>{ (per[d]=per[d]||[]).push(x); };
+  DAGEN.forEach(D=>D.taken.forEach((t,i)=>{ if(t[3]&&t[2]>0) zet(t[3],{soort:'hw',key:D.d+':'+i,vak:t[0],wat:t[1],gepland:D.d}); }));
+  S.extra.filter(x=>x.soort==='huiswerk'&&!x.verborgen&&x.af).forEach(x=>zet(x.af,{soort:'hw',key:'x-'+x.id,vak:x.vak,wat:x.wat,gepland:x.dag,eigen:x,inles:!(x.min>0)}));
+  alleToetsen().forEach(T=>zet(T.d,{soort:'toets',T}));
+  return per;
+}
+function magRegel(x){
+  if(x.soort==='toets'){
+    const T=x.T, st=stofVan(T), af=st.filter(s=>S.done[s.key]).length;
+    return `<div class="mtoets"><div><b>${esc(T.vak)}<\/b> · ${esc(T.wat)}${lesuur(T.tijd)?' · '+esc(lesuur(T.tijd)):''}${toetsLabels(T)}
+      <span class="w">${st.length?esc(st.map(s=>s.wat).join(' · ').slice(0,220))+(st.length?` <span class="meta">(${af}/${st.length} geleerd)<\/span>`:''):'Lesstof nog invullen'}<\/span><\/div><\/div>`;
+  }
+  const on=!!S.done[x.key], id='m-'+x.key.replace(/[^a-z0-9-]/gi,'_');
+  const pl=x.gepland?'gepland '+kort(x.gepland):'';
+  if(x.inles) return `<li class="task done"><span><\/span><span class="txt"><span class="vak">${esc(x.vak)}<\/span> · <span class="w0">${esc(x.wat)}<\/span><\/span><span class="min">in de les<\/span><\/li>`;
+  return `<li class="task ${on?'done':''}"><label for="${id}"><input type="checkbox" id="${id}" data-k="${esc(x.key)}" ${on?'checked':''} ${S.readOnly?'disabled':''}><span class="txt"><span class="vak">${esc(x.vak)}<\/span> · <span class="w">${esc(x.wat)}<\/span><\/span><span class="min">${esc(pl)}<\/span><\/label><\/li>`;
+}
+function renderMag(){
+  const per=magItems(), t=vandaag(), morgen=iso((()=>{const x=dt(t);x.setDate(x.getDate()+1);return x;})());
+  const dagen=Object.keys(per).sort(), komend=dagen.filter(d=>d>=t), voorbij=dagen.filter(d=>d<t);
+  const blok=d=>{
+    const it=per[d], toetsen=it.filter(x=>x.soort==='toets'), hw=it.filter(x=>x.soort==='hw');
+    const naam=d===t?'Vandaag':(d===morgen?'Morgen':'');
+    return `<section class="mdag ${d===morgen?'morgen':''}"><h3>${naam?esc(naam)+' · ':''}${esc(lang(d))}<small>${hw.length} huiswerk${toetsen.length?' · '+toetsen.length+' toets'+(toetsen.length>1?'en':''):''}<\/small><\/h3>
+      ${toetsen.map(magRegel).join('')}${hw.length?`<ul class="list">${hw.map(magRegel).join('')}<\/ul>`:''}<\/section>`;
+  };
+  $('magDagen').innerHTML=(komend.map(blok).join('')||'<p class="meta">Nog niets met een inleverdatum. Lees de afsprakenlijst uit Magister in, of voeg huiswerk toe met "moet af op".<\/p>')
+    +(voorbij.length?`<details data-id="mag-voorbij" ${document.querySelector('details[data-id="mag-voorbij"][open]')?'open':''}><summary><span class="dn">Voorbij (${voorbij.length} dagen)<\/span><\/summary><div class="inner">${voorbij.reverse().map(blok).join('')}<\/div><\/details>`:'');
+  const zh=zonderHtml(); $('magZonder').innerHTML=zh; $('magZonder').hidden=!zh;
+}
+
 function toetsOp(d){
   const v=DAGEN.find(x=>x.d===d); if(v&&v.toets) return v.toets;
   return alleToetsen().filter(T=>T.d===d&&T.bron).map(T=>T.vak+' · '+T.wat+(T.tijd!=='les'?' '+T.tijd:'')).join(' · ');
@@ -825,13 +919,15 @@ function render(){
   }
 
   // toetsen
+  { const zh=zonderHtml(); $('zonderDatum').innerHTML=zh; $('zonderDatum').hidden=!zh;
+    const n=zonderDatum().length; $('signaal').hidden=!n; $('signaal').textContent=n?`⚠ ${n} toets${n>1?'en':''} zonder datum. Tik om de datum in te vullen.`:''; }
   $('toetsen').innerHTML=alleToetsen().filter(T=>T.d>=today).map(T=>{
-    const st=stofVan(T), af=st.filter(x=>S.done[x.key]).length, all=af===st.length;
+    const st=stofVan(T), af=st.filter(x=>S.done[x.key]).length, all=st.length>0&&af===st.length;
     const did='t-'+T.id;
     return `<details class="toets ${all?'alldone':''}" data-id="${did}" ${openD.includes(did)?'open':''}>
-      <summary><span class="dn">${esc(T.vak)} · ${esc(kort(T.d))}${T.tijd!=='les'?' · '+esc(T.tijd):''}<\/span><span class="pc">${all?'✓':af+'/'+st.length}<\/span>
-      <span class="sub">${esc(T.wat)}${T.pta?' <span class="tag pta">PTA<\/span>':''}${T.bron==='magister'?' <span class="tag mag">Magister<\/span>':(T.bron==='inhalen'?' <span class="tag wijz">Inhalen<\/span>':'')}${T.gewijzigd?' <span class="tag wijz">gewijzigd door school<\/span>':''}<\/span><\/summary>
-      <div class="inner"><ul class="list">${st.map(stofHtml).join('')}<\/ul>${sgHtml(T)}<\/div><\/details>`;
+      <summary><span class="dn">${esc(T.vak)} · ${esc(kort(T.d))}${lesuur(T.tijd)?' · '+esc(lesuur(T.tijd)):''}<\/span><span class="pc">${all?'✓':(st.length?af+'/'+st.length:'')}<\/span>
+      <span class="sub">${esc(T.wat)}${toetsLabels(T)}<\/span><\/summary>
+      <div class="inner">${st.length?`<ul class="list">${st.map(stofHtml).join('')}<\/ul>`:'<p class="meta">Lesstof nog invullen.<\/p>'}${S.readOnly?'':`<button class="linkbtn" data-zdstof="${esc(T.id)}">+ Lesstof toevoegen<\/button>`}${sgHtml(T)}<\/div><\/details>`;
   }).join('')||'<div class="meta">Geen toetsen meer gepland.<\/div>';
 
   // dagen
@@ -861,6 +957,7 @@ function render(){
   const nt=$('noteTxt');
   if(nt){ if(draft!=null) nt.value=draft; if(hulpDraft!=null) $('noteHulp').checked=hulpDraft; if(hadFocus){ nt.focus(); nt.setSelectionRange(nt.value.length,nt.value.length); } }
   const sg2=$('sgInput'); if(sg2&&sgFocus){ sg2.focus(); }
+  if(!$('tabMag').hidden||true) renderMag();
   const ut2=$('uitlegTxt'); if(ut2&&utFocus){ ut2.focus(); ut2.setSelectionRange(ut2.value.length,ut2.value.length); }
 }
 
@@ -884,6 +981,11 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   if(b.dataset.ccopy){ e.preventDefault(); kopieer(vraagVoorClaude(b.dataset.ccopy)).then(ok=>{ toast(ok?'Vraag gekopieerd':'Kopiëren lukte niet. Selecteer de tekst.'); if(!ok){ const t=$('claudeTxt'); if(t){t.focus();t.select();} } }); return; }
   if(b.dataset.cclose){ e.preventDefault(); claudeKey=null; render(); return; }
+  if(b.dataset.zdedit){ e.preventDefault(); datumEdit=b.dataset.zdedit; render(); const i=$('zdDatum'); if(i) i.focus(); return; }
+  if(b.dataset.zdcancel){ e.preventDefault(); datumEdit=null; render(); return; }
+  if(b.dataset.zdsave){ e.preventDefault(); const d=$('zdDatum').value, u=$('zdUur').value.trim(); if(!d){ toast('Kies eerst een datum.'); return; }
+    const id=b.dataset.zdsave; datumEdit=null; const data={d}; if(u) data.tijd=u; updExtra(id,data); toast('Datum opgeslagen: '+kort(d)); return; }
+  if(b.dataset.zdstof){ e.preventDefault(); zetTab('planner'); openToevoegen('toetsstof',b.dataset.zdstof); return; }
   if(b.dataset.ustuur){ e.preventDefault(); uitlegKey=b.dataset.ustuur; uitlegDraft=''; render(); const u=$('uitlegTxt'); if(u) u.focus(); return; }
   if(b.dataset.ucancel){ e.preventDefault(); uitlegKey=null; uitlegDraft=null; render(); return; }
   if(b.dataset.uverstuur){ e.preventDefault(); const k=b.dataset.uverstuur, tx=schoonTekst($('uitlegTxt').value);
@@ -912,11 +1014,12 @@ document.addEventListener('click',e=>{
 
 // ---------- toevoegen ----------
 let soort='huiswerk', andereDag=false;
-const vulVakken=()=>{ $('hwVak').innerHTML=vakkenLijst().map(v=>`<option>${esc(v)}<\/option>`).join(''); };
-function vulToetsen(){ const t=vandaag(); $('tsToets').innerHTML=alleToetsen().filter(T=>T.d>=t).map(T=>`<option value="${T.id}">${esc(T.vak)} · ${esc(kort(T.d))}<\/option>`).join(''); }
+const vulVakken=()=>{ const o=vakkenLijst().map(v=>`<option>${esc(v)}<\/option>`).join(''); $('hwVak').innerHTML=o; $('toVak').innerHTML=o; };
+function vulToetsen(){ const t=vandaag(); $('tsToets').innerHTML=alleToetsen().filter(T=>T.d>=t).concat(zonderDatum()).map(T=>`<option value="${T.id}">${esc(T.vak)} · ${esc(T.d?kort(T.d):'datum onbekend')}<\/option>`).join(''); }
 function zetSoort(s){
-  soort=s; $('segHw').setAttribute('aria-pressed',s==='huiswerk'); $('segTs').setAttribute('aria-pressed',s==='toetsstof');
+  soort=s; $('segHw').setAttribute('aria-pressed',s==='huiswerk'); $('segTs').setAttribute('aria-pressed',s==='toetsstof'); $('segTo').setAttribute('aria-pressed',s==='toets');
   $('fHw').hidden=s!=='huiswerk'; $('fHw').style.display=s==='huiswerk'?'grid':'none'; $('fTs').hidden=s!=='toetsstof'; $('fTs').style.display=s==='toetsstof'?'grid':'none';
+  $('fTo').hidden=s!=='toets'; $('fTo').style.display=s==='toets'?'grid':'none';
   $('addMsg').hidden=true;
 }
 function makenTekst(){
@@ -926,9 +1029,11 @@ function makenTekst(){
   if(!andereDag) $('hwDag').value=dag;
   $('hwMaken').innerHTML=`Je maakt het op <b>${esc(lang(dag))}<\/b>, zodat je het op ${esc(kort(af))} kunt meenemen.`;
 }
+function openToevoegen(s,toets){ vulVakken(); vulToetsen(); zetSoort(s); andereDag=false; $('hwDagWrap').hidden=true; $('panel').hidden=false; $('openAdd').hidden=true; makenTekst();
+  if(toets){ $('tsToets').value=toets; $('tsWat').focus(); } $('panel').scrollIntoView({behavior:'smooth',block:'start'}); }
 $('openAdd').onclick=()=>{ vulVakken(); vulToetsen(); zetSoort('huiswerk'); andereDag=false; $('hwDagWrap').hidden=true; $('panel').hidden=false; $('openAdd').hidden=true; makenTekst(); $('hwWat').focus(); };
 $('cancel').onclick=()=>{ $('panel').hidden=true; $('openAdd').hidden=S.readOnly; };
-$('segHw').onclick=()=>zetSoort('huiswerk'); $('segTs').onclick=()=>zetSoort('toetsstof');
+$('segHw').onclick=()=>zetSoort('huiswerk'); $('segTs').onclick=()=>zetSoort('toetsstof'); $('segTo').onclick=()=>zetSoort('toets');
 $('hwAf').oninput=makenTekst; $('hwDag').oninput=makenTekst;
 $('hwAnders').onclick=()=>{ andereDag=true; $('hwDagWrap').hidden=false; makenTekst(); $('hwDag').focus(); };
 $('save').onclick=async()=>{
@@ -940,6 +1045,10 @@ $('save').onclick=async()=>{
     if(!af) return msg('Kies de dag waarop het af moet zijn.');
     const dag=andereDag&&$('hwDag').value?$('hwDag').value:dagVoor(af);
     item={soort:'huiswerk',vak:$('hwVak').value,wat,af,dag,min:Math.max(5,Math.min(240,+$('hwMin').value||30)),t:Date.now()};
+  } else if(soort==='toets'){
+    const sd=$('toSoort').value, stof=$('toStof').value.split('\n').map(x=>x.trim()).filter(Boolean);
+    item={soort:'toets',vak:$('toVak').value,d:$('toDatum').value||'',tijd:$('toUur').value.trim()||'les',
+      wat:sd==='inhalen'?'Inhaaltoets':(sd==='pta'?'PTA-toets':'Toets'),stof,pta:sd==='pta',bron:sd==='inhalen'?'inhalen':'zelf',t:Date.now()};
   } else {
     const wat=$('tsWat').value.trim();
     if(!$('tsToets').value) return msg('Er zijn geen toetsen meer om iets aan toe te voegen.');
@@ -950,8 +1059,8 @@ $('save').onclick=async()=>{
   const ok=await addExtra(item);
   $('save').disabled=false;
   if(ok){
-    $('hwWat').value=''; $('tsWat').value=''; $('panel').hidden=true; $('openAdd').hidden=S.readOnly;
-    toast(item.soort==='huiswerk'?'Opgeslagen op '+kort(item.dag):'Toegevoegd aan de toetsstof');
+    $('hwWat').value=''; $('tsWat').value=''; $('toStof').value=''; $('toDatum').value=''; $('toUur').value=''; $('panel').hidden=true; $('openAdd').hidden=S.readOnly;
+    toast(item.soort==='huiswerk'?'Opgeslagen op '+kort(item.dag):(item.soort==='toets'?(item.d?'Toets op '+kort(item.d)+' toegevoegd':'Toets toegevoegd, datum nog invullen'):'Toegevoegd aan de toetsstof'));
   }
 };
 
@@ -1406,13 +1515,15 @@ renderSW();
 
 // tabs
 function zetTab(t){
-  $('tabPlanner').hidden=t!=='planner'; $('tabSw').hidden=t!=='sw';
-  $('tbPlanner').setAttribute('aria-pressed',t==='planner'); $('tbSw').setAttribute('aria-pressed',t==='sw');
-  try{localStorage.setItem('tw-tab',t)}catch(e){}
+  $('tabPlanner').hidden=t!=='planner'; $('tabSw').hidden=t!=='sw'; $('tabMag').hidden=t!=='mag';
+  $('tbPlanner').setAttribute('aria-pressed',t==='planner'); $('tbSw').setAttribute('aria-pressed',t==='sw'); $('tbMag').setAttribute('aria-pressed',t==='mag');
+  if(t==='mag') renderMag();
+  try{localStorage.setItem('tw-tab-'+SP.kind,t)}catch(e){}
 }
-$('tbPlanner').onclick=()=>zetTab('planner'); $('tbSw').onclick=()=>zetTab('sw');
-let startTab='planner'; try{ startTab=localStorage.getItem('tw-tab')||'planner'; }catch(e){}
-zetTab(SW.length&&startTab==='sw'?'sw':'planner');
+$('tbPlanner').onclick=()=>zetTab('planner'); $('tbSw').onclick=()=>zetTab('sw'); $('tbMag').onclick=()=>zetTab('mag');
+$('signaal').onclick=()=>{ zetTab('planner'); const z=$('zonderDatum'); if(z) z.scrollIntoView({behavior:'smooth',block:'start'}); };
+let startTab='planner'; try{ startTab=localStorage.getItem('tw-tab-'+SP.kind)||'planner'; }catch(e){}
+zetTab(startTab==='sw'&&SW.length?'sw':(startTab==='mag'?'mag':'planner'));
 
 // ---------- tekstgrootte en thema ----------
 let fs=18; try{fs=+localStorage.getItem('tw-fs')||18}catch(e){}
@@ -1425,7 +1536,7 @@ $('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.th
   if(R){ $('rooster').innerHTML=`<h2>${esc(R.titel)}<\/h2><div class="rgrid">${R.kop.map(k=>`<span class="h">${esc(k)}<\/span>`).join('')}${R.rijen.map(rij=>rij.map((c,i)=>`<span${i?'':' class="d"'}>${esc(c)}<\/span>`).join('')).join('')}<\/div>${R.note?`<div class="note">${esc(R.note)}<\/div>`:''}`; $('rooster').hidden=false; }
   const C=SP.inhoud.checks||[];
   if(C.length){ $('checks').innerHTML=`<h2>Even navragen of checken<\/h2><ul>${C.map(c=>`<li>${esc(c)}<\/li>`).join('')}<\/ul>`; $('checks').hidden=false; }
-  $('tabsNav').hidden=!SW.length;
+  $('tbSw').hidden=!SW.length;
   $('oefenen').hidden=!SP.inhoud.grieks;
 }
 
