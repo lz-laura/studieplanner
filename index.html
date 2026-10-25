@@ -1003,12 +1003,13 @@ async function leesAfsprakenlijst(file){
   const regels=[];
   items.forEach(i=>{ const r=regels[regels.length-1];
     if(r&&r.p===i.p&&Math.abs(r.y-i.y)<2.5) r.items.push(i); else regels.push({p:i.p,y:i.y,items:[i]}); });
-  const lessen=[]; let datum=null, les=null;
+  const lessen=[]; let datum=null, les=null, voetNaam='';
   regels.forEach(r=>{
     r.items.sort((a,b)=>a.x-b.x);
     const alles=r.items.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
-    if(/^Afsprakenlijst van/i.test(alles)) return;
-    if(/\d+\/\d+$/.test(alles)&&/ om \d{1,2}:\d{2}/.test(alles)) return;          // voettekst
+    if(/^Afsprakenlijst van/i.test(alles)){ voetNaam=alles.replace(/^Afsprakenlijst van\s*/i,'').trim(); return; }
+    if(/\d+\s*\/\s*\d+$/.test(alles)&&/ om \d{1,2}:\d{2}/.test(alles)) return;          // voettekst
+    if(voetNaam&&alles.indexOf(voetNaam)===0&&/ om \d{1,2}:\d{2}/.test(alles)) return;
     const dm=alles.match(DATUMREGEL); if(dm){ datum=datumUit(dm); les=null; return; }
     const links=r.items.filter(i=>i.x<typeX-3).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
     const soort=r.items.filter(i=>i.x>=typeX-3&&i.x<omsX-3).map(i=>i.s).join(' ').trim();
