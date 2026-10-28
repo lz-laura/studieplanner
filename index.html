@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Studieplanner</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="sp-versie" content="2026-10-25e">
+<meta name="sp-versie" content="2026-10-28a">
 <script>
 // opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
 window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
@@ -264,6 +264,9 @@ details.alldone summary .pc{color:var(--ok)}
 .obrief mark,.oq mark,.ofout mark{background:var(--toets-soft);color:var(--ink);padding:0 3px;border-radius:4px;font-weight:700}
 .ovb{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.95em}
 .otip{border-left:4px solid var(--kid);padding-left:12px;font-style:italic}
+.ouitleg{border-left:4px solid var(--kid)}
+.ostap{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:10px}
+.ostap li{line-height:1.45}
 .oprog{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
 .oprog i{display:block;height:100%;background:var(--kid)}
 .oq{font-weight:700;font-size:1.1em;margin:0}
@@ -606,6 +609,9 @@ function oefOpties(set,v){
   }
   return {opts:oefSchud([v.goed,...oefSchud(K.opties.filter(x=>x!==v.goed)).slice(0,3)]),goed:v.goed,u:v.u};
 }
+// uitleg per blok: eerste keer open, daarna ingeklapt (onthouden per toestel)
+const oefGezien=k=>{ try{ return localStorage.getItem('sp-uitleg-'+k)==='1'; }catch(e){ return false; } };
+const oefZie=k=>{ try{ localStorage.setItem('sp-uitleg-'+k,'1'); }catch(e){} };
 const oefGoedGehad=k=>{ const s=S.kStats[k]; return !!s&&s.laatst==='goed'; };
 
 // staat per set: gekozen blok en het rondje
@@ -622,6 +628,7 @@ function oefSetHtml(set){
   const st=OS[set.id];
   const all=oefAlle(set), gehad=all.filter(v=>oefGoedGehad(v.key)).length, lastig=all.filter(v=>isLastig(v.key)).length;
   const blok=set.blokken.find(b=>b.id===st.blok);
+  const uk=blok&&blok.uitleg&&blok.uitleg.length?set.id+'-'+blok.id:null, nieuw=!!uk&&!oefGezien(uk);
   const chips=set.blokken.map(b=>{ const vr=oefVragen(set,b), g=vr.filter(v=>oefGoedGehad(v.key)).length;
       return `<button data-oblok="${esc(b.id)}" aria-pressed="${st.blok===b.id}">${esc(b.naam)} <span class="ocnt">${g}/${vr.length}<\/span><\/button>`; }).join('')
     +`<button data-oblok="proef" aria-pressed="${st.blok==='proef'}">Proeftoets<\/button>`
@@ -631,8 +638,9 @@ function oefSetHtml(set){
     <span class="sub">${set.bron?esc(set.bron)+' · ':''}${gehad} van ${all.length} vragen goed beantwoord<\/span><\/summary>
     <div class="inner">
       <div class="chips" role="group" aria-label="Wat wil je oefenen?">${chips}<\/div>
+      ${uk?`<details class="obriefbox ouitleg" ${nieuw||st.uitlegOpen?'open':''} data-ouitleg="${esc(set.id)}"><summary><span class="dn">Uitleg · ${esc(blok.naam)}<\/span><span class="sub">${nieuw?'Lees dit eerst':'Nog een keer lezen'}<\/span><\/summary><div class="inner"><ol class="ostap">${blok.uitleg.map(t=>`<li>${oefMk(t)}<\/li>`).join('')}<\/ol>${nieuw?`<div class="row"><button class="prim" data-oact="snapik">Snap ik → oefenen<\/button><\/div>`:''}<\/div><\/details>`:''}
       ${blok?`<details class="obriefbox" ${st.briefOpen?'open':''} data-obrief="${esc(set.id)}"><summary><span class="dn">Spiekbriefje · ${esc(blok.naam)}<\/span><span class="sub">${esc(blok.kort||'')}<\/span><\/summary><div class="inner">${oefBriefHtml(blok)}<\/div><\/details>`:''}
-      <div class="oquiz" id="oq-${esc(set.id)}">${oefQuizHtml(set)}<\/div>
+      <div class="oquiz" id="oq-${esc(set.id)}" ${nieuw?'hidden':''}>${oefQuizHtml(set)}<\/div>
     <\/div><\/details>`;
 }
 function oefStart(set,herkans){
@@ -694,6 +702,8 @@ function oefVerversen(){
 }
 document.getElementById('oefSets').addEventListener('toggle',e=>{
   const d=e.target; if(d.dataset&&d.dataset.obrief&&OS[d.dataset.obrief]) OS[d.dataset.obrief].briefOpen=d.open;
+  if(d.dataset&&d.dataset.ouitleg&&OS[d.dataset.ouitleg]){ const id=d.dataset.ouitleg; OS[id].uitlegOpen=d.open;
+    if(!d.open){ const q=d.closest('.oefset').querySelector('.oquiz'); if(q&&q.hidden){ oefZie(id+'-'+OS[id].blok); q.hidden=false; } } }
   if(d.classList&&d.classList.contains('oefset')){ const id=d.id.replace(/^oef-/,''); if(OS[id]) OS[id].open=d.open; }
 },true);
 document.getElementById('oefSets').addEventListener('click',async e=>{
@@ -701,7 +711,7 @@ document.getElementById('oefSets').addEventListener('click',async e=>{
   const set=OEF.find(s=>'oef-'+s.id===box.id); if(!set) return;
   const st=OS[set.id];
   const bl=e.target.closest('[data-oblok]');
-  if(bl){ st.blok=bl.dataset.oblok; st.briefOpen=false; oefStart(set); const h=document.createElement('div'); h.innerHTML=oefSetHtml(set); box.replaceWith(h.firstElementChild); return; }
+  if(bl){ st.blok=bl.dataset.oblok; st.briefOpen=false; st.uitlegOpen=false; oefStart(set); const h=document.createElement('div'); h.innerHTML=oefSetHtml(set); box.replaceWith(h.firstElementChild); return; }
   const op=e.target.closest('[data-oopt]');
   if(op&&st.keuze==null){
     st.keuze=+op.dataset.oopt; const v=st.lijst[st.n], goed=st.cur.opts[st.keuze]===st.cur.goed;
@@ -714,6 +724,7 @@ document.getElementById('oefSets').addEventListener('click',async e=>{
     kopieer(tx).then(ok=>toast(ok?'Claude opent met de vraag. Ook gekopieerd, voor de zekerheid.':'Claude opent met de vraag.')); return; }
   const a=e.target.closest('[data-oact]'); if(!a) return;
   const act=a.dataset.oact, v=st.lijst[st.n];
+  if(act==='snapik'){ oefZie(set.id+'-'+st.blok); st.uitlegOpen=false; const h=document.createElement('div'); h.innerHTML=oefSetHtml(set); box.replaceWith(h.firstElementChild); const nb=$('oef-'+set.id); if(nb) nb.querySelector('.oquiz').scrollIntoView({block:'nearest'}); return; }
   if(act==='volgende'){ st.n++; st.keuze=null; st.paneel=null; if(st.n<st.lijst.length) st.cur=oefOpties(set,st.lijst[st.n]); oefTeken(set.id); box.querySelector('.oquiz').scrollIntoView({block:'nearest'}); return; }
   if(act==='herkans'){ oefStart(set,true); oefTeken(set.id); return; }
   if(act==='opnieuw'){ oefStart(set); oefTeken(set.id); return; }
