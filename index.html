@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Studieplanner</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="sp-versie" content="2026-10-28a">
+<meta name="sp-versie" content="2026-11-05a">
 <script>
 // opslag-adres (Apps Script). Persoonlijke gegevens komen pas mee als de code in de link klopt.
 window.SP_API='https://script.google.com/macros/s/AKfycbyj-iLmL-pVygc55kpnUqznwDxLmqW-JKMInrJSLTwx_b61vMRQEIjc8sYWtY4YqomQ/exec';
@@ -274,6 +274,8 @@ details.alldone summary .pc{color:var(--ok)}
 .oopt{min-height:56px;text-align:left;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
 .oopt:hover:not(:disabled){border-color:var(--kid)}
 .oopt:disabled{cursor:default}
+.onr{display:inline-grid;place-items:center;min-width:1.7em;height:1.7em;margin-right:10px;border-radius:50%;border:1.5px solid var(--line);font-size:.85em;font-weight:700;opacity:.75;vertical-align:middle}
+@media (hover:none){.khint{display:none}}
 .oopt.ok,.ofb.ok{border-color:var(--ok);background:var(--ok-soft)}
 .oopt.no,.ofb.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--card))}
 .ofb{border:2px solid;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
@@ -666,10 +668,10 @@ function oefQuizHtml(set){
   }
   const v=st.lijst[st.n], c=st.cur, k=st.keuze;
   const opts=c.opts.map((o,i)=>{ let cls=''; if(k!=null){ if(o===c.goed) cls='ok'; else if(i===k) cls='no'; }
-    return `<button class="oopt ${cls}" data-oopt="${i}" ${k!=null?'disabled':''}>${oefMk(o)}<\/button>`; }).join('');
+    return `<button class="oopt ${cls}" data-oopt="${i}" ${k!=null?'disabled':''}><span class="onr">${i+1}<\/span>${oefMk(o)}<\/button>`; }).join('');
   const ok=k!=null&&c.opts[k]===c.goed;
   const n=S.notes[v.key];
-  return `<div class="meta">${st.herkans?'Foute vragen opnieuw · ':''}Vraag ${st.n+1} van ${st.lijst.length} · ${st.goed} goed${n&&n.hulp?' · hulp gevraagd':''}<\/div>
+  return `<div class="meta">${st.herkans?'Foute vragen opnieuw · ':''}Vraag ${st.n+1} van ${st.lijst.length} · ${st.goed} goed${n&&n.hulp?' · hulp gevraagd':''}${k==null?'<span class="khint"> · typ 1–'+c.opts.length+'<\/span>':''}<\/div>
     <div class="oprog"><i style="width:${st.n/st.lijst.length*100}%"><\/i><\/div>
     <p class="oq">${oefMk(v.q).replace(/\n/g,'<br>')}<\/p>
     <div class="oopts">${opts}<\/div>
@@ -706,6 +708,23 @@ document.getElementById('oefSets').addEventListener('toggle',e=>{
     if(!d.open){ const q=d.closest('.oefset').querySelector('.oquiz'); if(q&&q.hidden){ oefZie(id+'-'+OS[id].blok); q.hidden=false; } } }
   if(d.classList&&d.classList.contains('oefset')){ const id=d.id.replace(/^oef-/,''); if(OS[id]) OS[id].open=d.open; }
 },true);
+// meerkeuze met het toetsenbord: 1–4 kiest een antwoord, Enter = volgende vraag
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const el=document.activeElement; if(el&&(el.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+  const zicht=b=>{ if(!b||!b.offsetParent) return false; const r=b.getBoundingClientRect(); return r.bottom>0&&r.top<innerHeight; };
+  if(/^[1-9]$/.test(e.key)){
+    const knop=[...document.querySelectorAll('#oefSets .oopt:not(:disabled)')].filter(b=>b.offsetParent);
+    const quizzes=[...new Set(knop.map(b=>b.closest('.oquiz')||b.parentNode))];
+    const q=quizzes.find(x=>zicht(x))||quizzes[0]; if(!q) return;
+    const b=q.querySelectorAll('.oopt:not(:disabled)')[+e.key-1]; if(!b) return;
+    e.preventDefault(); b.click(); return;
+  }
+  if(e.key==='Enter'&&!(el&&/^(BUTTON|A|SUMMARY)$/.test(el.tagName))){
+    const nx=[...document.querySelectorAll('#oefSets [data-oact="volgende"]')].find(b=>b.offsetParent);
+    if(nx){ e.preventDefault(); nx.click(); }
+  }
+});
 document.getElementById('oefSets').addEventListener('click',async e=>{
   const box=e.target.closest('details.oefset'); if(!box) return;
   const set=OEF.find(s=>'oef-'+s.id===box.id); if(!set) return;
